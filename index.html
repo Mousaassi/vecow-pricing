@@ -74,8 +74,8 @@ input::placeholder{color:#9aa4b2;}
 
 .form-grid{display:grid; grid-template-columns:repeat(12,1fr); gap:12px; align-items:end;}
 .form-grid .f2{grid-column:span 2;} .form-grid .f3{grid-column:span 3;} .form-grid .f4{grid-column:span 4;}
-.form-grid .f6{grid-column:span 6;} .form-grid .f12{grid-column:span 12;}
-@media(max-width:860px){.form-grid .f2,.form-grid .f3,.form-grid .f4,.form-grid .f6{grid-column:span 6;}}
+.form-grid .f5{grid-column:span 5;} .form-grid .f6{grid-column:span 6;} .form-grid .f12{grid-column:span 12;}
+@media(max-width:860px){.form-grid .f2,.form-grid .f3,.form-grid .f4,.form-grid .f5,.form-grid .f6{grid-column:span 6;}}
 
 .cat-pill{display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px; font-size:.73rem; font-weight:700; color:#fff; white-space:nowrap;}
 .cat-1{background:var(--navy-2);} .cat-2{background:var(--green);} .cat-3{background:var(--purple);} .cat-4{background:var(--orange);}
@@ -132,6 +132,32 @@ tr.low-margin td{background:var(--danger-bg);}
 
 .merge-chip{background:#fff; border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size:.76rem; width:76px;}
 
+/* PN search dropdown */
+.pn-input-wrap{position:relative;}
+.pn-results{
+  position:absolute; top:100%; left:0; right:0; z-index:20; margin-top:4px;
+  background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm);
+  box-shadow:var(--shadow-md); max-height:260px; overflow-y:auto;
+}
+.pn-result-row{padding:9px 12px; text-align:left; cursor:pointer; border-bottom:1px solid var(--line);}
+.pn-result-row:last-child{border-bottom:none;}
+.pn-result-row:hover{background:var(--paper);}
+.pn-result-row strong{display:block; font-size:.84rem; color:var(--ink);}
+.pn-result-row span{font-size:.74rem; color:var(--ink-soft);}
+.pn-result-empty{padding:12px; font-size:.8rem; color:var(--ink-soft); text-align:center;}
+
+/* Add-ons picker */
+.addons-picker{margin-top:14px; padding:14px; background:#f4fbfc; border:1px solid #cdeef2; border-radius:var(--radius-sm);}
+.addons-picker .hint-title{font-size:.8rem; font-weight:700; color:#0c6f7e; margin-bottom:10px;}
+.addons-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px;}
+.addon-chk{display:flex; align-items:center; gap:8px; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); padding:8px 10px; font-size:.82rem;}
+.addon-chk input{width:auto;}
+.addon-chk .price-tag{margin-left:auto; color:var(--ink-soft); font-size:.76rem; font-variant-numeric:tabular-nums;}
+.addons-custom-row{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:end;}
+.addons-custom-row .cf1{flex:2; min-width:160px;}
+.addons-custom-row .cf2{width:130px;}
+.addons-none{font-size:.8rem; color:var(--ink-soft);}
+
 footer.foot{text-align:center; color:var(--ink-soft); font-size:.8rem; font-weight:600; margin-top:26px; letter-spacing:.01em;}
 </style>
 </head>
@@ -150,6 +176,7 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.8rem; font-weig
   <div class="maintabs">
     <button class="maintab active" id="mtQuotation" onclick="setMainTab('quotation')">Quotation</button>
     <button class="maintab" id="mtCatalog" onclick="setMainTab('catalog')">Product Catalog</button>
+    <button class="maintab" id="mtAddons" onclick="setMainTab('addons')">Add-ons</button>
   </div>
 
   <!-- ===================== QUOTATION TAB ===================== -->
@@ -168,9 +195,9 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.8rem; font-weig
       <h2><span class="dot"></span>Add item</h2>
       <div class="pn-row">
         <div class="pn-input-wrap">
-          <label>PN</label>
-          <input id="in_pn" list="pnDatalist" placeholder="Type a PN to look it up…" autocomplete="off">
-          <datalist id="pnDatalist"></datalist>
+          <label>PN or product name</label>
+          <input id="in_pn" placeholder="Type a PN or device name to look it up…" autocomplete="off">
+          <div id="pnResults" class="pn-results" style="display:none;"></div>
         </div>
         <div class="qty-wrap"><label>Qty</label><input id="in_qty" type="number" min="1" value="1"></div>
         <div class="price-wrap"><label>Current price (USD/unit)</label><input id="in_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
@@ -198,6 +225,16 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.8rem; font-weig
           <div class="f6"><label>Description / Specs</label><input id="in_desc" placeholder="Full description / specifications"></div>
         </div>
         <label class="checkbox-line"><input type="checkbox" id="saveToCatalogChk" checked> Save this device to the catalog for next time</label>
+      </div>
+
+      <div id="addonsPicker" class="addons-picker" style="display:none;">
+        <div class="hint-title">Add-ons for this device (optional)</div>
+        <div id="addonsGrid" class="addons-grid"></div>
+        <div class="addons-custom-row">
+          <div class="cf1"><label>One-off add-on (this device only)</label><input id="in_addonCustomName" placeholder="e.g. Custom bracket"></div>
+          <div class="cf2"><label>Price (USD/unit)</label><input id="in_addonCustomPrice" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="hint">Checked add-ons will be added as separate lines, priced on their own, and merged into one line for the client automatically.</div>
       </div>
 
       <details class="advanced" id="advancedDetails">
@@ -290,6 +327,32 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.8rem; font-weig
     </div>
   </div>
 
+  <!-- ===================== ADD-ONS TAB ===================== -->
+  <div id="tabAddons" style="display:none;">
+    <div class="card">
+      <h2><span class="dot"></span>Add a general add-on</h2>
+      <div class="hint" style="margin:-6px 0 14px;">Add-ons here (WiFi, Bluetooth, 4G, 5G, etc.) show up as quick checkboxes when adding any device to a quotation. For a one-off add-on that only applies to a single device, use the "One-off add-on" field instead — no need to save it here.</div>
+      <div class="form-grid">
+        <div class="f3"><label>Add-on name</label><input id="addon_name" placeholder="e.g. WiFi 6 Module"></div>
+        <div class="f5"><label>Description (optional)</label><input id="addon_desc" placeholder="Notes / specs"></div>
+        <div class="f2"><label>Price (USD/unit)</label><input id="addon_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="f2" style="display:flex; justify-content:flex-end;"><button class="btn-primary" onclick="addAddon()">+ Add add-on</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>All add-ons</h2>
+      <input id="addonSearch" placeholder="Search add-ons…" oninput="renderAddonsCatalog()">
+      <div class="table-scroll" style="margin-top:12px;">
+        <table id="addonsTable">
+          <thead><tr><th>Name</th><th>Description</th><th>Price (USD)</th><th></th></tr></thead>
+          <tbody id="addonsBody"></tbody>
+        </table>
+        <div id="addonsEmptyState" class="empty-state">No add-ons yet — add your first one above.</div>
+      </div>
+    </div>
+  </div>
+
   <footer class="foot">Vecow Tech</footer>
 </div>
 
@@ -303,9 +366,12 @@ let usingCloud = false;
 /* ============ state ============ */
 let items = [];
 let catalog = [];
+let addons = [];
 let localIdSeq = 1;
 let localCatIdSeq = 1;
+let localAddonIdSeq = 1;
 let currentTab = 'vecow';
+let pnResultsIndex = []; // last rendered search matches, for click handling
 
 const noteTemplates = {
   '': 'No note',
@@ -328,8 +394,10 @@ function setSyncStatus(mode){
 function setMainTab(tab){
   document.getElementById('mtQuotation').classList.toggle('active', tab==='quotation');
   document.getElementById('mtCatalog').classList.toggle('active', tab==='catalog');
+  document.getElementById('mtAddons').classList.toggle('active', tab==='addons');
   document.getElementById('tabQuotation').style.display = tab==='quotation' ? '' : 'none';
   document.getElementById('tabCatalog').style.display = tab==='catalog' ? '' : 'none';
+  document.getElementById('tabAddons').style.display = tab==='addons' ? '' : 'none';
 }
 
 function mapRowToItem(row){
@@ -343,6 +411,9 @@ function mapRowToItem(row){
 }
 function mapRowToCatalog(row){
   return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, createdAt: row.created_at };
+}
+function mapRowToAddon(row){
+  return { id: row.id, name: row.name, desc: row.description, price: row.price, createdAt: row.created_at };
 }
 
 /* ============ init / persistence ============ */
@@ -367,11 +438,17 @@ async function initPersistence(){
     const { data: catData, error: catError } = await sb.from('catalog').select('*').order('pn', {ascending:true});
     if(!catError){ catalog = (catData||[]).map(mapRowToCatalog); renderCatalog(); }
 
+    const { data: addonData, error: addonError } = await sb.from('addons').select('*').order('name', {ascending:true});
+    if(!addonError){ addons = (addonData||[]).map(mapRowToAddon); renderAddonsCatalog(); }
+
     sb.channel('items-sync')
       .on('postgres_changes', {event:'*', schema:'public', table:'items'}, ()=>{ refetchItems(); })
       .subscribe();
     sb.channel('catalog-sync')
       .on('postgres_changes', {event:'*', schema:'public', table:'catalog'}, ()=>{ refetchCatalog(); })
+      .subscribe();
+    sb.channel('addons-sync')
+      .on('postgres_changes', {event:'*', schema:'public', table:'addons'}, ()=>{ refetchAddons(); })
       .subscribe();
     sb.channel('meta-sync')
       .on('postgres_changes', {event:'*', schema:'public', table:'quotation_meta'}, (payload)=>{
@@ -404,8 +481,13 @@ async function initPersistence(){
       const raw = localStorage.getItem('vecow_catalog');
       if(raw) catalog = JSON.parse(raw);
     }catch(err){ catalog = []; }
+    try{
+      const raw = localStorage.getItem('vecow_addons');
+      if(raw) addons = JSON.parse(raw);
+    }catch(err){ addons = []; }
     render();
     renderCatalog();
+    renderAddonsCatalog();
   }
 }
 
@@ -417,9 +499,19 @@ async function refetchCatalog(){
   const { data, error } = await sb.from('catalog').select('*').order('pn', {ascending:true});
   if(!error){ catalog = (data||[]).map(mapRowToCatalog); renderCatalog(); }
 }
+async function refetchAddons(){
+  const { data, error } = await sb.from('addons').select('*').order('name', {ascending:true});
+  if(!error){
+    addons = (data||[]).map(mapRowToAddon);
+    renderAddonsCatalog();
+    const picker = document.getElementById('addonsPicker');
+    if(picker && picker.style.display!=='none') renderAddonsPicker();
+  }
+}
 
 function saveLocalItems(){ try{ localStorage.setItem('vecow_items', JSON.stringify(items)); }catch(e){} }
 function saveLocalCatalog(){ try{ localStorage.setItem('vecow_catalog', JSON.stringify(catalog)); }catch(e){} }
+function saveLocalAddons(){ try{ localStorage.setItem('vecow_addons', JSON.stringify(addons)); }catch(e){} }
 
 async function saveMeta(){
   const meta = {
@@ -442,8 +534,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     updateTierVisibility();
   });
   document.getElementById('in_intel').addEventListener('change', updateTierVisibility);
-  document.getElementById('in_pn').addEventListener('input', updatePnState);
-  document.getElementById('in_pn').addEventListener('change', updatePnState);
+  document.getElementById('in_pn').addEventListener('input', onPnInput);
+  document.getElementById('in_pn').addEventListener('focus', onPnInput);
+  document.addEventListener('click', function(e){
+    const wrap = document.getElementById('in_pn').closest('.pn-input-wrap');
+    if(wrap && !wrap.contains(e.target)) document.getElementById('pnResults').style.display = 'none';
+  });
   initPersistence();
 });
 
@@ -481,36 +577,93 @@ function profitPct(vecow, client){ if(!client) return 0; return ((client-vecow)/
 function catLabel(cat){ return {'1':'1. Vecow Systems','2':'2. Other Items','3':'3. Memory & Storage','4':'4. Outsourcing'}[cat]; }
 function catClass(cat){ return 'cat-'+cat; }
 
-/* ============ PN lookup / quick add flow ============ */
-function populatePnDatalist(){
-  const dl = document.getElementById('pnDatalist');
-  dl.innerHTML = catalog.map(c=>`<option value="${escapeHtml(c.pn)}">${escapeHtml(c.product||'')}</option>`).join('');
-}
-function updatePnState(){
-  const pnVal = document.getElementById('in_pn').value.trim();
+/* ============ PN / name lookup + quick add flow ============ */
+function onPnInput(){
+  const val = document.getElementById('in_pn').value.trim();
+  const resultsBox = document.getElementById('pnResults');
   const preview = document.getElementById('pnPreview');
   const newFields = document.getElementById('newDeviceFields');
-  if(!pnVal){ preview.style.display='none'; newFields.style.display='none'; return; }
-  const match = catalog.find(c=>(c.pn||'').toLowerCase()===pnVal.toLowerCase());
-  if(match){
-    document.getElementById('in_cat').value = match.cat;
-    document.getElementById('in_product').value = match.product || '';
-    document.getElementById('in_desc').value = match.desc || '';
-    if((match.price!=null && match.price!=='') && !document.getElementById('in_price').value){
-      document.getElementById('in_price').value = match.price;
-    }
-    document.getElementById('pnPreviewCat').className = 'cat-pill ' + catClass(match.cat);
-    document.getElementById('pnPreviewCat').textContent = catLabel(match.cat);
-    document.getElementById('pnPreviewProduct').textContent = match.product || '';
-    document.getElementById('pnPreviewDesc').textContent = match.desc || '';
-    preview.style.display = 'flex';
-    newFields.style.display = 'none';
-    document.getElementById('intelWrap').style.display = (match.cat==='2') ? '' : 'none';
-    updateTierVisibility();
+  const addonsPicker = document.getElementById('addonsPicker');
+
+  if(!val){
+    resultsBox.style.display='none';
+    preview.style.display='none';
+    newFields.style.display='none';
+    addonsPicker.style.display='none';
+    return;
+  }
+
+  const term = val.toLowerCase();
+  const matches = catalog.filter(c=>
+    (c.pn||'').toLowerCase().includes(term) ||
+    (c.product||'').toLowerCase().includes(term) ||
+    (c.desc||'').toLowerCase().includes(term)
+  ).slice(0,8);
+  pnResultsIndex = matches;
+
+  const exact = catalog.find(c=>(c.pn||'').toLowerCase()===term);
+
+  if(matches.length && !(matches.length===1 && exact)){
+    resultsBox.innerHTML = matches.map((m,i)=>`
+      <div class="pn-result-row" onclick="selectPn(${i})">
+        <strong>${escapeHtml(m.product||m.pn)}</strong>
+        <span>${escapeHtml(m.pn)}${m.desc?' · '+escapeHtml(m.desc):''}</span>
+      </div>`).join('');
+    resultsBox.style.display = 'block';
+  } else {
+    resultsBox.style.display = 'none';
+  }
+
+  if(exact){
+    fillFromCatalogMatch(exact);
   } else {
     preview.style.display = 'none';
     newFields.style.display = 'block';
   }
+  addonsPicker.style.display = 'block';
+  renderAddonsPicker();
+}
+
+function selectPn(idx){
+  const m = pnResultsIndex[idx];
+  if(!m) return;
+  document.getElementById('in_pn').value = m.pn;
+  fillFromCatalogMatch(m);
+  document.getElementById('pnResults').style.display = 'none';
+  document.getElementById('addonsPicker').style.display = 'block';
+  renderAddonsPicker();
+}
+
+function fillFromCatalogMatch(match){
+  document.getElementById('in_cat').value = match.cat;
+  document.getElementById('in_product').value = match.product || '';
+  document.getElementById('in_desc').value = match.desc || '';
+  if((match.price!=null && match.price!=='') && !document.getElementById('in_price').value){
+    document.getElementById('in_price').value = match.price;
+  }
+  document.getElementById('pnPreviewCat').className = 'cat-pill ' + catClass(match.cat);
+  document.getElementById('pnPreviewCat').textContent = catLabel(match.cat);
+  document.getElementById('pnPreviewProduct').textContent = match.product || '';
+  document.getElementById('pnPreviewDesc').textContent = match.desc || '';
+  document.getElementById('pnPreview').style.display = 'flex';
+  document.getElementById('newDeviceFields').style.display = 'none';
+  document.getElementById('intelWrap').style.display = (match.cat==='2') ? '' : 'none';
+  updateTierVisibility();
+}
+
+function renderAddonsPicker(){
+  const grid = document.getElementById('addonsGrid');
+  if(addons.length===0){
+    grid.innerHTML = '<div class="addons-none">No general add-ons saved yet — add some from the "Add-ons" tab, or use the one-off field below.</div>';
+    return;
+  }
+  grid.innerHTML = addons.map(a=>`
+    <label class="addon-chk">
+      <input type="checkbox" class="addon-check-input" value="${a.id}">
+      ${escapeHtml(a.name)}
+      <span class="price-tag">$${Number(a.price||0).toFixed(2)}</span>
+    </label>
+  `).join('');
 }
 async function maybeSaveNewPnToCatalog(pn, cat, product, desc, price){
   if(!pn || pn==='N/A') return;
@@ -618,7 +771,99 @@ function renderCatalog(){
   });
 }
 
+/* ============ add-ons catalog: CRUD ============ */
+async function addAddon(){
+  const name = document.getElementById('addon_name').value.trim();
+  const priceRaw = document.getElementById('addon_price').value;
+  if(!name){ alert('Please enter the add-on name'); return; }
+  if(!priceRaw || Number(priceRaw)<0){ alert('Please enter a price'); return; }
+  if(addons.some(a=>(a.name||'').toLowerCase()===name.toLowerCase())){
+    alert('An add-on with this name already exists. Edit it directly in the table below instead.');
+    return;
+  }
+  const data = { name: name, desc: document.getElementById('addon_desc').value, price: Number(priceRaw), createdAt: Date.now() };
+  if(usingCloud){
+    const { error } = await sb.from('addons').insert({ name: data.name, description: data.desc, price: data.price, created_at: data.createdAt });
+    if(error){ console.error(error); alert('Could not save this add-on to the cloud.'); return; }
+  } else {
+    data.id = 'local_addon_' + (localAddonIdSeq++);
+    addons.push(data);
+    saveLocalAddons();
+    renderAddonsCatalog();
+  }
+  ['addon_name','addon_desc','addon_price'].forEach(id=>document.getElementById(id).value='');
+}
+async function removeAddonItem(id){
+  if(!confirm('Remove this add-on from the catalog?')) return;
+  if(usingCloud){
+    const { error } = await sb.from('addons').delete().eq('id', id);
+    if(error) console.error(error);
+  } else {
+    addons = addons.filter(a=>a.id!==id);
+    saveLocalAddons();
+    renderAddonsCatalog();
+  }
+}
+const addonFieldToColumn = { name:'name', desc:'description', price:'price' };
+async function updateAddonField(id, field, value){
+  if(usingCloud){
+    const col = addonFieldToColumn[field];
+    const { error } = await sb.from('addons').update({[col]: value}).eq('id', id);
+    if(error) console.error(error);
+  } else {
+    const a = addons.find(a=>a.id===id);
+    if(!a) return;
+    a[field] = value;
+    saveLocalAddons();
+    renderAddonsCatalog();
+  }
+}
+function renderAddonsCatalog(){
+  const body = document.getElementById('addonsBody');
+  const empty = document.getElementById('addonsEmptyState');
+  const term = (document.getElementById('addonSearch').value||'').trim().toLowerCase();
+  const filtered = term ? addons.filter(a=>
+    (a.name||'').toLowerCase().includes(term) || (a.desc||'').toLowerCase().includes(term)
+  ) : addons;
+
+  body.innerHTML = '';
+  if(addons.length===0){ empty.style.display='block'; empty.textContent = 'No add-ons yet — add your first one above.'; }
+  else if(filtered.length===0){ empty.style.display='block'; empty.textContent = 'No matches for this search.'; }
+  else { empty.style.display='none'; }
+
+  filtered.forEach(a=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="left-al"><input value="${escapeHtml(a.name||'')}" style="min-width:150px;" onchange="updateAddonField('${a.id}','name',this.value)"></td>
+      <td class="left-al"><input value="${escapeHtml(a.desc||'')}" style="min-width:240px;" onchange="updateAddonField('${a.id}','desc',this.value)"></td>
+      <td class="num"><input type="number" min="0" step="0.01" value="${a.price!=null?a.price:''}" style="width:95px;" onchange="updateAddonField('${a.id}','price',this.value?Number(this.value):0)"></td>
+      <td><button class="btn-danger" onclick="removeAddonItem('${a.id}')">Delete</button></td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
 /* ============ item CRUD ============ */
+async function insertItemRow(base){
+  if(usingCloud){
+    const row = {
+      pn: base.pn, cat: base.cat, is_intel: base.isIntel, intel_div: base.intelDiv, tier: base.tier,
+      product: base.product, description: base.desc, qty: base.qty, price: base.price,
+      vecow_manual: null, client_manual: null, note:'', note_custom:'', note_date:'', merge_group: base.mergeGroup || '',
+      created_at: base.createdAt
+    };
+    const { error } = await sb.from('items').insert(row);
+    if(error){ console.error(error); alert('Could not save "'+base.product+'" to the cloud.'); return false; }
+  } else {
+    base.id = 'local_' + (localIdSeq++);
+    items.push(base);
+    saveLocalItems();
+  }
+  return true;
+}
+
+function newGroupId(){ return 'grp_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
 async function addItem(){
   const cat = document.getElementById('in_cat').value;
   const price = document.getElementById('in_price').value;
@@ -627,6 +872,18 @@ async function addItem(){
   if(!price || Number(price)<=0){ alert('Please enter the current price'); return; }
   if(!product){ alert('This PN needs a product name — check "New PN" details above'); return; }
 
+  const qty = Number(document.getElementById('in_qty').value)||1;
+
+  // gather selected add-ons + one-off add-on
+  const checkedBoxes = Array.from(document.querySelectorAll('.addon-check-input:checked'));
+  const selectedAddons = checkedBoxes.map(cb=>addons.find(a=>String(a.id)===cb.value)).filter(Boolean);
+  const customName = (document.getElementById('in_addonCustomName').value||'').trim();
+  const customPrice = document.getElementById('in_addonCustomPrice').value;
+  const hasCustomAddon = customName && customPrice && Number(customPrice)>0;
+
+  const needsGroup = selectedAddons.length>0 || hasCustomAddon;
+  const sharedGroup = needsGroup ? newGroupId() : '';
+
   const base = {
     pn: pn, cat: cat,
     isIntel: cat==='2' && document.getElementById('in_intel').value==='1',
@@ -634,34 +891,45 @@ async function addItem(){
     tier: document.getElementById('in_tier').value,
     product: product,
     desc: document.getElementById('in_desc').value,
-    qty: Number(document.getElementById('in_qty').value)||1,
+    qty: qty,
     price: Number(price),
     vecowManual: null, clientManual: null,
-    note: '', noteCustom: '', noteDate: '', mergeGroup: '',
+    note: '', noteCustom: '', noteDate: '', mergeGroup: sharedGroup,
     createdAt: Date.now()
   };
 
-  if(usingCloud){
-    const row = {
-      pn: base.pn, cat: base.cat, is_intel: base.isIntel, intel_div: base.intelDiv, tier: base.tier,
-      product: base.product, description: base.desc, qty: base.qty, price: base.price,
-      vecow_manual: null, client_manual: null, note:'', note_custom:'', note_date:'', merge_group:'',
-      created_at: base.createdAt
-    };
-    const { error } = await sb.from('items').insert(row);
-    if(error){ console.error(error); alert('Could not save to the cloud. Item not added.'); return; }
-  } else {
-    base.id = 'local_' + (localIdSeq++);
-    items.push(base);
-    saveLocalItems();
-  }
+  const ok = await insertItemRow(base);
+  if(!ok) return;
 
   await maybeSaveNewPnToCatalog(base.pn, base.cat, base.product, base.desc, base.price);
 
-  ['in_pn','in_product','in_desc','in_price'].forEach(id=>document.getElementById(id).value='');
+  // add each selected general add-on as its own priced line, merged with the device
+  for(const a of selectedAddons){
+    const addonRow = {
+      pn: 'ADDON', cat: '2', isIntel: false, intelDiv: '0.8', tier: 'auto',
+      product: a.name, desc: a.desc || '', qty: qty, price: Number(a.price)||0,
+      vecowManual: null, clientManual: null, note:'', noteCustom:'', noteDate:'', mergeGroup: sharedGroup,
+      createdAt: Date.now()
+    };
+    await insertItemRow(addonRow);
+  }
+  // one-off add-on, specific to this device only (not saved to the add-ons catalog)
+  if(hasCustomAddon){
+    const customRow = {
+      pn: 'ADDON', cat: '2', isIntel: false, intelDiv: '0.8', tier: 'auto',
+      product: customName, desc: '', qty: qty, price: Number(customPrice),
+      vecowManual: null, clientManual: null, note:'', noteCustom:'', noteDate:'', mergeGroup: sharedGroup,
+      createdAt: Date.now()
+    };
+    await insertItemRow(customRow);
+  }
+
+  ['in_pn','in_product','in_desc','in_price','in_addonCustomName','in_addonCustomPrice'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('in_qty').value=1;
   document.getElementById('pnPreview').style.display='none';
   document.getElementById('newDeviceFields').style.display='none';
+  document.getElementById('addonsPicker').style.display='none';
+  document.getElementById('pnResults').style.display='none';
   render();
 }
 
