@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vecow Tech — Pricing Tool</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230ea5b7'/%3E%3Cpath d='M30 52 L45 67 L72 35' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -668,7 +669,7 @@ async function addAddonItem(){
       pn: data.pn, name: data.name, description: data.desc, price: data.price,
       compatible_series: data.compatibleSeries, created_at: data.createdAt
     });
-    if(error){ console.error(error); alert('Could not save to the cloud add-ons list.'); return; }
+    if(error){ console.error(error); alert('Could not save to the cloud add-ons list.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
   } else {
     data.id = 'local_addon_' + (localAddonIdSeq++);
     addons.push(data);
@@ -752,7 +753,15 @@ async function addCatalogItem(){
     const { error } = await sb.from('catalog').insert({
       pn: data.pn, cat: data.cat, product: data.product, description: data.desc, price: data.price, created_at: data.createdAt
     });
-    if(error){ console.error(error); alert('Could not save to the cloud catalog.'); return; }
+    if(error){
+      console.error(error);
+      if(error.code==='23505'){
+        alert('This PN already exists in the cloud catalog (added from another tab/session). Refresh the page and edit it in the table below instead of re-adding it.');
+      } else {
+        alert('Could not save to the cloud catalog.\n\n' + (error.message||error.details||JSON.stringify(error)));
+      }
+      return;
+    }
   } else {
     data.id = 'local_cat_' + (localCatIdSeq++);
     catalog.push(data);
@@ -854,7 +863,7 @@ async function addItem(){
       created_at: base.createdAt
     };
     const { error } = await sb.from('items').insert(row);
-    if(error){ console.error(error); alert('Could not save to the cloud. Item not added.'); return; }
+    if(error){ console.error(error); alert('Could not save to the cloud. Item not added.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
   } else {
     base.id = 'local_' + (localIdSeq++);
     items.push(base);
