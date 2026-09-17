@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vecow Tech — Pricing Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{
+  --navy:#0a1930; --navy-2:#0f2447; --ink:#101828; --ink-soft:#667085; --line:#e4e7ec;
+  --paper:#f7f8fb; --card:#ffffff; --accent:#0ea5b7; --accent-2:#12c7dc;
+  --green:#3f8f5f; --purple:#7c5cbf; --orange:#e0821e;
+  --danger:#d5423f; --danger-bg:#fdeceb; --ok:#1c8a56; --ok-bg:#e9f7f0;
+  --radius:14px; --radius-sm:9px;
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  --shadow-md:0 4px 10px rgba(16,24,40,.06), 0 2px 4px rgba(16,24,40,.05);
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Inter",-apple-system,"Segoe UI",sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1360px; margin:0 auto; padding:24px 24px 90px;}
+
+/* header */
+header.top{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:6px 4px 22px;
+}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand-mark{
+  width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,var(--navy),var(--accent));
+  color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.05rem;
+  box-shadow:var(--shadow-md);
+}
+.brand-name{font-size:1.28rem; font-weight:800; letter-spacing:-.01em; color:var(--navy);}
+.brand-name .light{font-weight:500; color:var(--ink-soft);}
+.sync-status{display:flex; align-items:center; gap:7px; font-size:.78rem; color:var(--ink-soft); background:var(--card); border:1px solid var(--line); padding:6px 12px; border-radius:20px; box-shadow:var(--shadow);}
+.sync-dot{width:7px;height:7px;border-radius:50%; background:#98a2b3; flex:none;}
+.sync-dot.on{background:var(--ok); box-shadow:0 0 0 3px var(--ok-bg);}
+.sync-dot.off{background:#d99a3d; box-shadow:0 0 0 3px #fdf3e3;}
+
+/* stat row */
+.stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px;}
+.stat-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow);}
+.stat-lbl{font-size:.76rem; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+.stat-val{font-size:1.55rem; font-weight:800; margin-top:4px; letter-spacing:-.01em;}
+.stat-val.ok{color:var(--ok);} .stat-val.danger{color:var(--danger);}
+@media(max-width:900px){.stat-row{grid-template-columns:repeat(2,1fr);}}
+
+/* main tabs */
+.maintabs{display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid var(--line);}
+.maintab{background:transparent; border:none; padding:11px 18px; font-size:.9rem; font-weight:600; color:var(--ink-soft); border-bottom:2px solid transparent; border-radius:0; margin-bottom:-1px;}
+.maintab.active{color:var(--navy); border-bottom-color:var(--accent);}
+
+/* cards */
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:22px; margin-bottom:18px; box-shadow:var(--shadow);}
+.card h2{margin:0 0 16px; font-size:1.02rem; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:8px;}
+.card h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;}
+
+label{display:block; font-size:.76rem; color:var(--ink-soft); font-weight:600; margin-bottom:5px;}
+input,select,textarea{
+  width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:var(--radius-sm);
+  background:#fff; color:var(--ink); font-size:.87rem; font-family:inherit; transition:border-color .12s, box-shadow .12s;
+}
+input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(14,165,183,.13);}
+input::placeholder{color:#9aa4b2;}
+
+.meta-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px;}
+
+.form-grid{display:grid; grid-template-columns:repeat(12,1fr); gap:12px; align-items:end;}
+.form-grid .f2{grid-column:span 2;} .form-grid .f3{grid-column:span 3;} .form-grid .f4{grid-column:span 4;}
+.form-grid .f6{grid-column:span 6;} .form-grid .f12{grid-column:span 12;}
+@media(max-width:860px){.form-grid .f2,.form-grid .f3,.form-grid .f4,.form-grid .f6{grid-column:span 6;}}
+
+.cat-pill{display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px; font-size:.73rem; font-weight:700; color:#fff; white-space:nowrap;}
+.cat-1{background:var(--navy-2);} .cat-2{background:var(--green);} .cat-3{background:var(--purple);} .cat-4{background:var(--orange);}
+
+button{cursor:pointer; border:none; border-radius:var(--radius-sm); padding:10px 18px; font-size:.87rem; font-weight:700; font-family:inherit; transition:filter .12s, transform .05s;}
+button:active{transform:translateY(1px);}
+.btn-primary{background:var(--navy); color:#fff; box-shadow:var(--shadow);}
+.btn-primary:hover{background:var(--navy-2);}
+.btn-outline{background:transparent; border:1px solid var(--line); color:var(--ink);}
+.btn-outline:hover{border-color:var(--accent); color:var(--accent);}
+.btn-danger{background:transparent; border:1px solid var(--danger); color:var(--danger); padding:6px 12px; font-size:.78rem; font-weight:600;}
+.btn-danger:hover{background:var(--danger); color:#fff;}
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+
+/* quick add item */
+.pn-row{display:flex; gap:12px; align-items:end; flex-wrap:wrap;}
+.pn-row .pn-input-wrap{flex:2; min-width:220px;}
+.pn-row .qty-wrap{width:100px;}
+.pn-row .price-wrap{width:170px;}
+.pn-row button{white-space:nowrap;}
+
+.pn-preview{
+  display:flex; align-items:center; gap:12px; margin-top:14px; padding:12px 14px;
+  background:var(--ok-bg); border:1px solid #cdeadb; border-radius:var(--radius-sm);
+}
+.pn-preview-text strong{display:block; font-size:.9rem; color:var(--ink);}
+.pn-preview-text span{font-size:.78rem; color:var(--ink-soft);}
+
+.new-device-fields{margin-top:14px; padding:14px; background:#fdf8ec; border:1px solid #f2e3bb; border-radius:var(--radius-sm);}
+.new-device-fields .hint-title{font-size:.8rem; font-weight:700; color:#8a6d1f; margin-bottom:10px;}
+.checkbox-line{display:flex; align-items:center; gap:8px; margin-top:10px; font-size:.82rem; color:var(--ink-soft); font-weight:500;}
+.checkbox-line input{width:auto;}
+
+details.advanced{margin-top:14px;}
+details.advanced summary{cursor:pointer; font-size:.8rem; color:var(--ink-soft); font-weight:600; padding:4px 0;}
+details.advanced summary:hover{color:var(--accent);}
+
+.hint{font-size:.78rem; color:var(--ink-soft); margin-top:8px;}
+.empty-state{padding:36px; text-align:center; color:var(--ink-soft); font-size:.86rem;}
+
+table{width:100%; border-collapse:collapse; font-size:.83rem;}
+th,td{padding:10px 9px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle;}
+th{background:var(--paper); color:var(--ink-soft); font-weight:700; font-size:.72rem; text-transform:uppercase; letter-spacing:.02em;}
+tbody tr:hover td{background:#fafbfc;}
+td input,td select{padding:6px 8px; font-size:.8rem;}
+.table-scroll{overflow-x:auto; border-radius:var(--radius-sm);}
+tr.low-margin td{background:var(--danger-bg);}
+.tag-note{font-size:.72rem; color:var(--ink-soft);}
+.num{font-variant-numeric:tabular-nums;} .left-al{text-align:left;}
+
+.section-tabs{display:flex; gap:8px; margin-bottom:16px;}
+.tab-btn{background:var(--paper); border:1px solid var(--line); color:var(--ink-soft); padding:8px 18px; border-radius:20px; font-size:.82rem; font-weight:600;}
+.tab-btn.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+
+.merge-chip{background:#fff; border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size:.76rem; width:76px;}
+
+footer.foot{text-align:center; color:var(--ink-soft); font-size:.8rem; font-weight:600; margin-top:26px; letter-spacing:.01em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">V</div>
+      <div class="brand-name">Vecow <span class="light">Tech</span></div>
+    </div>
+  </header>
+
+  <div class="stat-row" id="statRow"></div>
+
+  <div class="maintabs">
+    <button class="maintab active" id="mtQuotation" onclick="setMainTab('quotation')">Quotation</button>
+    <button class="maintab" id="mtCatalog" onclick="setMainTab('catalog')">Product Catalog</button>
+  </div>
+
+  <!-- ===================== QUOTATION TAB ===================== -->
+  <div id="tabQuotation">
+
+    <div class="card">
+      <h2><span class="dot"></span>Quotation details</h2>
+      <div class="meta-grid">
+        <div><label>Quotation No.</label><input id="qNo" placeholder="e.g. 1"></div>
+        <div><label>Date</label><input id="qDate" type="date"></div>
+        <div><label>Client name (optional)</label><input id="qClient" placeholder="Company / client name"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>Add item</h2>
+      <div class="pn-row">
+        <div class="pn-input-wrap">
+          <label>PN</label>
+          <input id="in_pn" list="pnDatalist" placeholder="Type a PN to look it up…" autocomplete="off">
+          <datalist id="pnDatalist"></datalist>
+        </div>
+        <div class="qty-wrap"><label>Qty</label><input id="in_qty" type="number" min="1" value="1"></div>
+        <div class="price-wrap"><label>Current price (USD/unit)</label><input id="in_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <button class="btn-primary" onclick="addItem()">+ Add to quotation</button>
+      </div>
+
+      <div id="pnPreview" class="pn-preview" style="display:none;">
+        <span class="cat-pill" id="pnPreviewCat"></span>
+        <div class="pn-preview-text"><strong id="pnPreviewProduct"></strong><span id="pnPreviewDesc"></span></div>
+      </div>
+
+      <div id="newDeviceFields" class="new-device-fields" style="display:none;">
+        <div class="hint-title">New PN — fill in its details once</div>
+        <div class="form-grid">
+          <div class="f2">
+            <label>Type</label>
+            <select id="in_cat">
+              <option value="1">1. Vecow Systems &amp; Power Adaptors</option>
+              <option value="2">2. Other Items (CPU, Modules, Cards)</option>
+              <option value="3">3. Memory &amp; Storage</option>
+              <option value="4">4. Outsourcing</option>
+            </select>
+          </div>
+          <div class="f4"><label>Product</label><input id="in_product" placeholder="e.g. ECX-3200-PEG"></div>
+          <div class="f6"><label>Description / Specs</label><input id="in_desc" placeholder="Full description / specifications"></div>
+        </div>
+        <label class="checkbox-line"><input type="checkbox" id="saveToCatalogChk" checked> Save this device to the catalog for next time</label>
+      </div>
+
+      <details class="advanced" id="advancedDetails">
+        <summary>Advanced options — Intel CPU divisor &amp; quantity tier</summary>
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="f3" id="intelWrap" style="display:none;">
+            <label>Intel CPU?</label>
+            <select id="in_intel"><option value="0">No</option><option value="1">Yes — no fixed discount</option></select>
+          </div>
+          <div class="f3" id="tierWrap">
+            <label>Quantity tier</label>
+            <select id="in_tier">
+              <option value="auto">Auto by quantity</option>
+              <option value="0.7">Sample (÷0.7)</option>
+              <option value="0.75">50 PCS+ (÷0.75)</option>
+              <option value="0.8">100 PCS+ (÷0.8)</option>
+            </select>
+          </div>
+          <div class="f3" id="intelDivWrap" style="display:none;">
+            <label>Intel CPU divisor</label>
+            <select id="in_intelDiv"><option value="0.9">÷0.9</option><option value="0.8">÷0.8</option></select>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>Items in this quotation</h2>
+      <div class="table-scroll">
+        <table id="itemsTable">
+          <thead><tr>
+            <th>#</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th>
+            <th>Original price</th><th>Vecow U/P</th><th>Client U/P</th><th>Profit %</th>
+            <th>Client note</th><th>Merge group</th><th></th>
+          </tr></thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+        <div id="emptyState" class="empty-state">No items yet — look up a PN above to add one.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>Table preview</h2>
+      <div class="section-tabs">
+        <button class="tab-btn active" id="tabVecowBtn" onclick="setTab('vecow')">Vecow table (PO)</button>
+        <button class="tab-btn" id="tabClientBtn" onclick="setTab('client')">Client table</button>
+      </div>
+      <div id="previewVecow" class="table-scroll"></div>
+      <div id="previewClient" class="table-scroll" style="display:none;"></div>
+      <div class="toolbar">
+        <button class="btn-primary" onclick="exportExcel()">⬇ Export Excel</button>
+        <button class="btn-outline" onclick="clearAll()">Clear all items</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== CATALOG TAB ===================== -->
+  <div id="tabCatalog" style="display:none;">
+    <div class="card">
+      <h2><span class="dot"></span>Add a device</h2>
+      <div class="form-grid">
+        <div class="f2"><label>PN</label><input id="cat_pn" placeholder="90-VBJ5000-010"></div>
+        <div class="f2">
+          <label>Type</label>
+          <select id="cat_cat">
+            <option value="1">1. Vecow Systems &amp; Power Adaptors</option>
+            <option value="2">2. Other Items (CPU, Modules, Cards)</option>
+            <option value="3">3. Memory &amp; Storage</option>
+            <option value="4">4. Outsourcing</option>
+          </select>
+        </div>
+        <div class="f3"><label>Product</label><input id="cat_product" placeholder="e.g. ECX-3200-PEG"></div>
+        <div class="f4"><label>Description / Specs</label><input id="cat_desc" placeholder="Full description / specifications"></div>
+        <div class="f2"><label>Default price (USD, optional)</label><input id="cat_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="f12" style="display:flex; justify-content:flex-end;"><button class="btn-primary" onclick="addCatalogItem()">+ Add to catalog</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>All devices</h2>
+      <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()">
+      <div class="table-scroll" style="margin-top:12px;">
+        <table id="catalogTable">
+          <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th></th></tr></thead>
+          <tbody id="catalogBody"></tbody>
+        </table>
+        <div id="catalogEmptyState" class="empty-state">Catalog is empty — add your first device above.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Vecow Tech</footer>
+</div>
+
+<script>
+/* ============ Supabase connection ============ */
+const SUPABASE_URL = 'https://wzikmbafjsdhohrhskrb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_LVTTXH4H52X3qM3iUYIZNQ_j_sXzn2O';
+let sb = null;
+let usingCloud = false;
+
+/* ============ state ============ */
+let items = [];
+let catalog = [];
+let localIdSeq = 1;
+let localCatIdSeq = 1;
+let currentTab = 'vecow';
+
+const noteTemplates = {
+  '': 'No note',
+  'nomem': 'Without Memory and Storage',
+  'withmem': 'With Memory and Storage',
+  'validtill': 'Valid till [date]',
+  'stock': 'Subject to Stock Availability',
+  'custom': 'Custom text…'
+};
+
+const fieldToColumn = {
+  qty:'qty', price:'price', vecowManual:'vecow_manual', clientManual:'client_manual',
+  note:'note', noteCustom:'note_custom', noteDate:'note_date', mergeGroup:'merge_group'
+};
+
+function setSyncStatus(mode){
+  // sync indicator UI removed — kept as a no-op so callers don't need to change.
+}
+
+function setMainTab(tab){
+  document.getElementById('mtQuotation').classList.toggle('active', tab==='quotation');
+  document.getElementById('mtCatalog').classList.toggle('active', tab==='catalog');
+  document.getElementById('tabQuotation').style.display = tab==='quotation' ? '' : 'none';
+  document.getElementById('tabCatalog').style.display = tab==='catalog' ? '' : 'none';
+}
+
+function mapRowToItem(row){
+  return {
+    id: row.id, pn: row.pn, cat: row.cat, isIntel: row.is_intel, intelDiv: row.intel_div,
+    tier: row.tier, product: row.product, desc: row.description, qty: row.qty, price: row.price,
+    vecowManual: row.vecow_manual, clientManual: row.client_manual, note: row.note || '',
+    noteCustom: row.note_custom || '', noteDate: row.note_date || '', mergeGroup: row.merge_group || '',
+    createdAt: row.created_at
+  };
+}
+function mapRowToCatalog(row){
+  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, createdAt: row.created_at };
+}
+
+/* ============ init / persistence ============ */
+async function initPersistence(){
+  try{
+    if(typeof supabase === 'undefined') throw new Error('supabase-js failed to load');
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data, error } = await sb.from('items').select('*').order('created_at', {ascending:true});
+    if(error) throw error;
+    usingCloud = true;
+    items = (data||[]).map(mapRowToItem);
+    setSyncStatus('cloud');
+    render();
+
+    const { data: metaData } = await sb.from('quotation_meta').select('*').eq('id',1).single();
+    if(metaData){
+      document.getElementById('qNo').value = metaData.q_no || '';
+      document.getElementById('qDate').value = metaData.q_date || '';
+      document.getElementById('qClient').value = metaData.q_client || '';
+    }
+
+    const { data: catData, error: catError } = await sb.from('catalog').select('*').order('pn', {ascending:true});
+    if(!catError){ catalog = (catData||[]).map(mapRowToCatalog); renderCatalog(); }
+
+    sb.channel('items-sync')
+      .on('postgres_changes', {event:'*', schema:'public', table:'items'}, ()=>{ refetchItems(); })
+      .subscribe();
+    sb.channel('catalog-sync')
+      .on('postgres_changes', {event:'*', schema:'public', table:'catalog'}, ()=>{ refetchCatalog(); })
+      .subscribe();
+    sb.channel('meta-sync')
+      .on('postgres_changes', {event:'*', schema:'public', table:'quotation_meta'}, (payload)=>{
+        const m = payload.new;
+        if(!m) return;
+        if(document.activeElement.id!=='qNo') document.getElementById('qNo').value = m.q_no || '';
+        if(document.activeElement.id!=='qDate') document.getElementById('qDate').value = m.q_date || '';
+        if(document.activeElement.id!=='qClient') document.getElementById('qClient').value = m.q_client || '';
+      })
+      .subscribe();
+  } catch(e){
+    const detail = (e && (e.message || e.error_description || e.details || e.hint)) || JSON.stringify(e);
+    console.error('Supabase connection failed, falling back to local storage:', detail, e);
+    usingCloud = false;
+    setSyncStatus('local');
+    try{
+      const raw = localStorage.getItem('vecow_items');
+      if(raw) items = JSON.parse(raw);
+    }catch(err){ items = []; }
+    try{
+      const raw = localStorage.getItem('vecow_meta');
+      if(raw){
+        const m = JSON.parse(raw);
+        document.getElementById('qNo').value = m.qNo || '';
+        document.getElementById('qDate').value = m.qDate || '';
+        document.getElementById('qClient').value = m.qClient || '';
+      }
+    }catch(err){}
+    try{
+      const raw = localStorage.getItem('vecow_catalog');
+      if(raw) catalog = JSON.parse(raw);
+    }catch(err){ catalog = []; }
+    render();
+    renderCatalog();
+  }
+}
+
+async function refetchItems(){
+  const { data, error } = await sb.from('items').select('*').order('created_at', {ascending:true});
+  if(!error){ items = (data||[]).map(mapRowToItem); render(); }
+}
+async function refetchCatalog(){
+  const { data, error } = await sb.from('catalog').select('*').order('pn', {ascending:true});
+  if(!error){ catalog = (data||[]).map(mapRowToCatalog); renderCatalog(); }
+}
+
+function saveLocalItems(){ try{ localStorage.setItem('vecow_items', JSON.stringify(items)); }catch(e){} }
+function saveLocalCatalog(){ try{ localStorage.setItem('vecow_catalog', JSON.stringify(catalog)); }catch(e){} }
+
+async function saveMeta(){
+  const meta = {
+    qNo: document.getElementById('qNo').value,
+    qDate: document.getElementById('qDate').value,
+    qClient: document.getElementById('qClient').value
+  };
+  if(usingCloud){
+    try{ await sb.from('quotation_meta').update({q_no:meta.qNo, q_date:meta.qDate, q_client:meta.qClient}).eq('id',1); }
+    catch(e){ console.error(e); }
+  } else {
+    try{ localStorage.setItem('vecow_meta', JSON.stringify(meta)); }catch(e){}
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  ['qNo','qDate','qClient'].forEach(id=>document.getElementById(id).addEventListener('change', saveMeta));
+  document.getElementById('in_cat').addEventListener('change', function(){
+    document.getElementById('intelWrap').style.display = (this.value==='2') ? '' : 'none';
+    updateTierVisibility();
+  });
+  document.getElementById('in_intel').addEventListener('change', updateTierVisibility);
+  document.getElementById('in_pn').addEventListener('input', updatePnState);
+  document.getElementById('in_pn').addEventListener('change', updatePnState);
+  initPersistence();
+});
+
+function updateTierVisibility(){
+  const cat = document.getElementById('in_cat').value;
+  const isIntel = document.getElementById('in_intel').value === '1';
+  document.getElementById('tierWrap').style.display = (cat==='1' || (cat==='2' && !isIntel)) ? '' : 'none';
+  document.getElementById('intelDivWrap').style.display = (cat==='2' && isIntel) ? '' : 'none';
+}
+
+/* ============ pricing engine ============ */
+function tierDivisor(qty){ if(qty>=100) return 0.8; if(qty>=50) return 0.75; return 0.7; }
+function computeAuto(item){
+  const orig = Number(item.price)||0; const qty = Number(item.qty)||1;
+  let vecow, client;
+  if(item.cat==='1'){
+    vecow = orig*0.9;
+    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
+    client = vecow/div;
+  } else if(item.cat==='2'){
+    if(item.isIntel){ vecow = orig; client = orig/(Number(item.intelDiv)||0.8); }
+    else { vecow = orig; const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier); client = orig/div; }
+  } else if(item.cat==='3'){ vecow = orig/0.9; client = vecow/0.8; }
+  else { vecow = orig; client = orig/0.8 + 30; }
+  return {vecow, client};
+}
+function getEffective(item){
+  const auto = computeAuto(item);
+  return {
+    vecow: (item.vecowManual!==null && item.vecowManual!==undefined && item.vecowManual!=='') ? Number(item.vecowManual) : auto.vecow,
+    client: (item.clientManual!==null && item.clientManual!==undefined && item.clientManual!=='') ? Number(item.clientManual) : auto.client
+  };
+}
+function profitPct(vecow, client){ if(!client) return 0; return ((client-vecow)/client)*100; }
+function catLabel(cat){ return {'1':'1. Vecow Systems','2':'2. Other Items','3':'3. Memory & Storage','4':'4. Outsourcing'}[cat]; }
+function catClass(cat){ return 'cat-'+cat; }
+
+/* ============ PN lookup / quick add flow ============ */
+function populatePnDatalist(){
+  const dl = document.getElementById('pnDatalist');
+  dl.innerHTML = catalog.map(c=>`<option value="${escapeHtml(c.pn)}">${escapeHtml(c.product||'')}</option>`).join('');
+}
+function updatePnState(){
+  const pnVal = document.getElementById('in_pn').value.trim();
+  const preview = document.getElementById('pnPreview');
+  const newFields = document.getElementById('newDeviceFields');
+  if(!pnVal){ preview.style.display='none'; newFields.style.display='none'; return; }
+  const match = catalog.find(c=>(c.pn||'').toLowerCase()===pnVal.toLowerCase());
+  if(match){
+    document.getElementById('in_cat').value = match.cat;
+    document.getElementById('in_product').value = match.product || '';
+    document.getElementById('in_desc').value = match.desc || '';
+    if((match.price!=null && match.price!=='') && !document.getElementById('in_price').value){
+      document.getElementById('in_price').value = match.price;
+    }
+    document.getElementById('pnPreviewCat').className = 'cat-pill ' + catClass(match.cat);
+    document.getElementById('pnPreviewCat').textContent = catLabel(match.cat);
+    document.getElementById('pnPreviewProduct').textContent = match.product || '';
+    document.getElementById('pnPreviewDesc').textContent = match.desc || '';
+    preview.style.display = 'flex';
+    newFields.style.display = 'none';
+    document.getElementById('intelWrap').style.display = (match.cat==='2') ? '' : 'none';
+    updateTierVisibility();
+  } else {
+    preview.style.display = 'none';
+    newFields.style.display = 'block';
+  }
+}
+async function maybeSaveNewPnToCatalog(pn, cat, product, desc, price){
+  if(!pn || pn==='N/A') return;
+  if(catalog.some(c=>(c.pn||'').toLowerCase()===pn.toLowerCase())) return;
+  const chk = document.getElementById('saveToCatalogChk');
+  if(chk && !chk.checked) return;
+  if(usingCloud){
+    try{ await sb.from('catalog').insert({pn, cat, product, description:desc, price, created_at: Date.now()}); }
+    catch(e){ console.error(e); }
+  } else {
+    catalog.push({id:'local_cat_'+(localCatIdSeq++), pn, cat, product, desc, price, createdAt: Date.now()});
+    saveLocalCatalog();
+    renderCatalog();
+  }
+}
+
+/* ============ catalog: CRUD ============ */
+async function addCatalogItem(){
+  const pn = document.getElementById('cat_pn').value.trim();
+  const product = document.getElementById('cat_product').value.trim();
+  if(!pn){ alert('Please enter a PN'); return; }
+  if(!product){ alert('Please enter the product name'); return; }
+  if(catalog.some(c=>(c.pn||'').toLowerCase()===pn.toLowerCase())){
+    alert('This PN already exists in the catalog. Edit it directly in the table below instead.');
+    return;
+  }
+  const priceRaw = document.getElementById('cat_price').value;
+  const data = {
+    pn: pn, cat: document.getElementById('cat_cat').value, product: product,
+    desc: document.getElementById('cat_desc').value, price: priceRaw ? Number(priceRaw) : null,
+    createdAt: Date.now()
+  };
+  if(usingCloud){
+    const { error } = await sb.from('catalog').insert({
+      pn: data.pn, cat: data.cat, product: data.product, description: data.desc, price: data.price, created_at: data.createdAt
+    });
+    if(error){ console.error(error); alert('Could not save to the cloud catalog.'); return; }
+  } else {
+    data.id = 'local_cat_' + (localCatIdSeq++);
+    catalog.push(data);
+    saveLocalCatalog();
+    renderCatalog();
+  }
+  ['cat_pn','cat_product','cat_desc','cat_price'].forEach(id=>document.getElementById(id).value='');
+}
+async function removeCatalogItem(id){
+  if(!confirm('Remove this device from the catalog?')) return;
+  if(usingCloud){
+    const { error } = await sb.from('catalog').delete().eq('id', id);
+    if(error) console.error(error);
+  } else {
+    catalog = catalog.filter(c=>c.id!==id);
+    saveLocalCatalog();
+    renderCatalog();
+  }
+}
+const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price' };
+async function updateCatalogField(id, field, value){
+  if(usingCloud){
+    const col = catFieldToColumn[field];
+    const { error } = await sb.from('catalog').update({[col]: value}).eq('id', id);
+    if(error) console.error(error);
+  } else {
+    const c = catalog.find(c=>c.id===id);
+    if(!c) return;
+    c[field] = value;
+    saveLocalCatalog();
+    renderCatalog();
+  }
+}
+function renderCatalog(){
+  populatePnDatalist();
+  const body = document.getElementById('catalogBody');
+  const empty = document.getElementById('catalogEmptyState');
+  const term = (document.getElementById('catalogSearch').value||'').trim().toLowerCase();
+  const filtered = term ? catalog.filter(c=>
+    (c.pn||'').toLowerCase().includes(term) ||
+    (c.product||'').toLowerCase().includes(term) ||
+    (c.desc||'').toLowerCase().includes(term)
+  ) : catalog;
+
+  body.innerHTML = '';
+  if(catalog.length===0){ empty.style.display='block'; empty.textContent = 'Catalog is empty — add your first device above.'; }
+  else if(filtered.length===0){ empty.style.display='block'; empty.textContent = 'No matches for this search.'; }
+  else { empty.style.display='none'; }
+
+  filtered.forEach(c=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(c.pn)}</td>
+      <td>
+        <select onchange="updateCatalogField('${c.id}','cat',this.value)" style="min-width:150px;">
+          <option value="1" ${c.cat==='1'?'selected':''}>1. Vecow Systems</option>
+          <option value="2" ${c.cat==='2'?'selected':''}>2. Other Items</option>
+          <option value="3" ${c.cat==='3'?'selected':''}>3. Memory & Storage</option>
+          <option value="4" ${c.cat==='4'?'selected':''}>4. Outsourcing</option>
+        </select>
+      </td>
+      <td class="left-al"><input value="${escapeHtml(c.product||'')}" style="min-width:130px;" onchange="updateCatalogField('${c.id}','product',this.value)"></td>
+      <td class="left-al"><input value="${escapeHtml(c.desc||'')}" style="min-width:240px;" onchange="updateCatalogField('${c.id}','desc',this.value)"></td>
+      <td class="num"><input type="number" min="0" step="0.01" value="${c.price!=null?c.price:''}" style="width:95px;" onchange="updateCatalogField('${c.id}','price',this.value?Number(this.value):null)"></td>
+      <td><button class="btn-danger" onclick="removeCatalogItem('${c.id}')">Delete</button></td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+/* ============ item CRUD ============ */
+async function addItem(){
+  const cat = document.getElementById('in_cat').value;
+  const price = document.getElementById('in_price').value;
+  const product = document.getElementById('in_product').value;
+  const pn = document.getElementById('in_pn').value.trim() || 'N/A';
+  if(!price || Number(price)<=0){ alert('Please enter the current price'); return; }
+  if(!product){ alert('This PN needs a product name — check "New PN" details above'); return; }
+
+  const base = {
+    pn: pn, cat: cat,
+    isIntel: cat==='2' && document.getElementById('in_intel').value==='1',
+    intelDiv: document.getElementById('in_intelDiv').value,
+    tier: document.getElementById('in_tier').value,
+    product: product,
+    desc: document.getElementById('in_desc').value,
+    qty: Number(document.getElementById('in_qty').value)||1,
+    price: Number(price),
+    vecowManual: null, clientManual: null,
+    note: '', noteCustom: '', noteDate: '', mergeGroup: '',
+    createdAt: Date.now()
+  };
+
+  if(usingCloud){
+    const row = {
+      pn: base.pn, cat: base.cat, is_intel: base.isIntel, intel_div: base.intelDiv, tier: base.tier,
+      product: base.product, description: base.desc, qty: base.qty, price: base.price,
+      vecow_manual: null, client_manual: null, note:'', note_custom:'', note_date:'', merge_group:'',
+      created_at: base.createdAt
+    };
+    const { error } = await sb.from('items').insert(row);
+    if(error){ console.error(error); alert('Could not save to the cloud. Item not added.'); return; }
+  } else {
+    base.id = 'local_' + (localIdSeq++);
+    items.push(base);
+    saveLocalItems();
+  }
+
+  await maybeSaveNewPnToCatalog(base.pn, base.cat, base.product, base.desc, base.price);
+
+  ['in_pn','in_product','in_desc','in_price'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('in_qty').value=1;
+  document.getElementById('pnPreview').style.display='none';
+  document.getElementById('newDeviceFields').style.display='none';
+  render();
+}
+
+async function removeItem(id){
+  if(usingCloud){
+    const { error } = await sb.from('items').delete().eq('id', id);
+    if(error) console.error(error);
+  } else {
+    items = items.filter(i=>i.id!==id);
+    saveLocalItems();
+    render();
+  }
+}
+async function updateField(id, field, value){
+  if(usingCloud){
+    const col = fieldToColumn[field];
+    const { error } = await sb.from('items').update({[col]: value}).eq('id', id);
+    if(error) console.error(error);
+  } else {
+    const item = items.find(i=>i.id===id);
+    if(!item) return;
+    item[field] = value;
+    saveLocalItems();
+    render();
+  }
+}
+async function clearAll(){
+  if(!confirm('Clear all items?')) return;
+  if(usingCloud){
+    const { error } = await sb.from('items').delete().gte('created_at', 0);
+    if(error) console.error(error);
+  } else {
+    items = [];
+    saveLocalItems();
+    render();
+  }
+}
+
+/* ============ render ============ */
+function renderStats(){
+  let totalVecow=0, totalClient=0;
+  items.forEach(item=>{ const eff=getEffective(item); totalVecow += eff.vecow*item.qty; totalClient += eff.client*item.qty; });
+  const overallPct = totalClient ? ((totalClient-totalVecow)/totalClient*100) : 0;
+  document.getElementById('statRow').innerHTML = `
+    <div class="stat-card"><div class="stat-lbl">Items</div><div class="stat-val">${items.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Vecow Cost</div><div class="stat-val">$${totalVecow.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Client Price</div><div class="stat-val">$${totalClient.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Margin</div><div class="stat-val ${overallPct<20?'danger':'ok'}">${overallPct.toFixed(1)}%</div></div>
+  `;
+}
+
+function render(){
+  const body = document.getElementById('itemsBody');
+  const empty = document.getElementById('emptyState');
+  body.innerHTML = '';
+  empty.style.display = items.length===0 ? 'block' : 'none';
+
+  items.forEach((item, idx)=>{
+    const eff = getEffective(item);
+    const pct = profitPct(eff.vecow, eff.client);
+    const tr = document.createElement('tr');
+    if(pct < 20) tr.classList.add('low-margin');
+    tr.innerHTML = `
+      <td class="num">${idx+1}</td>
+      <td>${escapeHtml(item.pn)}</td>
+      <td><span class="cat-pill ${catClass(item.cat)}">${catLabel(item.cat)}${item.isIntel?' · Intel':''}</span></td>
+      <td class="left-al">${escapeHtml(item.product)}</td>
+      <td class="left-al" style="max-width:220px;">${escapeHtml(item.desc||'')}</td>
+      <td class="num"><input type="number" min="1" value="${item.qty}" style="width:60px" onchange="updateField('${item.id}','qty',Number(this.value))"></td>
+      <td class="num"><input type="number" min="0" step="0.01" value="${item.price}" style="width:80px" onchange="updateField('${item.id}','price',Number(this.value))"></td>
+      <td class="num"><input type="number" step="0.01" value="${eff.vecow.toFixed(2)}" style="width:80px" onchange="updateField('${item.id}','vecowManual',this.value)"></td>
+      <td class="num"><input type="number" step="0.01" value="${eff.client.toFixed(2)}" style="width:80px" onchange="updateField('${item.id}','clientManual',this.value)"></td>
+      <td class="num" style="color:${pct<20?'var(--danger)':'var(--ok)'}; font-weight:700;">${pct.toFixed(1)}%</td>
+      <td>${renderNoteCell(item)}</td>
+      <td><input class="merge-chip" placeholder="—" value="${escapeHtml(item.mergeGroup||'')}" onchange="updateField('${item.id}','mergeGroup',this.value)"></td>
+      <td><button class="btn-danger" onclick="removeItem('${item.id}')">Delete</button></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  renderStats();
+  renderPreviews();
+}
+
+function renderNoteCell(item){
+  let html = `<select onchange="updateField('${item.id}','note',this.value)" style="width:120px;">`;
+  Object.keys(noteTemplates).forEach(k=>{ html += `<option value="${k}" ${item.note===k?'selected':''}>${noteTemplates[k]}</option>`; });
+  html += `</select>`;
+  if(item.note==='validtill') html += `<input type="date" value="${item.noteDate||''}" style="width:120px;margin-top:4px;" onchange="updateField('${item.id}','noteDate',this.value)">`;
+  if(item.note==='custom') html += `<input type="text" value="${escapeHtml(item.noteCustom||'')}" style="width:120px;margin-top:4px;" placeholder="Note text" onchange="updateField('${item.id}','noteCustom',this.value)">`;
+  return html;
+}
+function resolveNoteText(item){
+  if(item.note==='') return '';
+  if(item.note==='validtill') return 'Valid till ' + (item.noteDate ? formatDate(item.noteDate) : '');
+  if(item.note==='custom') return item.noteCustom || '';
+  return noteTemplates[item.note];
+}
+function formatDate(d){ const dt = new Date(d); if(isNaN(dt)) return d; return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short'}); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function buildClientRows(){
+  const groups = {}; const singles = [];
+  items.forEach(item=>{
+    if(item.mergeGroup && item.mergeGroup.trim()!==''){
+      const key = item.mergeGroup.trim();
+      if(!groups[key]) groups[key] = [];
+      groups[key].push(item);
+    } else { singles.push({merged:false, items:[item]}); }
+  });
+  const mergedGroups = Object.keys(groups).map(k=>({merged:true, key:k, items:groups[k]}));
+  return [...singles, ...mergedGroups];
+}
+
+function setTab(tab){
+  currentTab = tab;
+  document.getElementById('tabVecowBtn').classList.toggle('active', tab==='vecow');
+  document.getElementById('tabClientBtn').classList.toggle('active', tab==='client');
+  document.getElementById('previewVecow').style.display = tab==='vecow' ? '' : 'none';
+  document.getElementById('previewClient').style.display = tab==='client' ? '' : 'none';
+}
+
+function renderPreviews(){
+  let vHtml = `<table><thead><tr><th>No</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>Price (USD)</th><th>U/P (USD)</th><th>Total (USD)</th></tr></thead><tbody>`;
+  items.forEach((item, idx)=>{
+    const eff = getEffective(item);
+    vHtml += `<tr><td>${idx+1}</td><td>${escapeHtml(item.pn)}</td><td>${catLabel(item.cat)}</td>
+      <td class="left-al">${escapeHtml(item.product)}</td><td class="left-al">${escapeHtml(item.desc)}</td>
+      <td>${item.qty}</td><td>$${Number(item.price).toFixed(2)}</td>
+      <td style="color:var(--danger);font-weight:700;">${eff.vecow.toFixed(2)}</td><td>${(eff.vecow*item.qty).toFixed(2)}</td></tr>`;
+  });
+  vHtml += `</tbody></table>`;
+  document.getElementById('previewVecow').innerHTML = items.length ? vHtml : '<div class="empty-state">No items yet</div>';
+
+  const rows = buildClientRows();
+  let cHtml = `<table><thead><tr><th>No</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>U/P (USD)</th><th>Total (USD)</th><th>Note</th></tr></thead><tbody>`;
+  rows.forEach((row, idx)=>{
+    if(!row.merged){
+      const item = row.items[0]; const eff = getEffective(item);
+      cHtml += `<tr><td>${idx+1}</td><td>${catLabel(item.cat)}</td>
+        <td class="left-al">${escapeHtml(item.product)}</td><td class="left-al">${escapeHtml(item.desc)}</td>
+        <td>${item.qty}</td><td>${eff.client.toFixed(2)}</td><td>${(eff.client*item.qty).toFixed(2)}</td>
+        <td class="tag-note">${escapeHtml(resolveNoteText(item))}</td></tr>`;
+    } else {
+      const total = row.items.reduce((s,it)=>{ const eff=getEffective(it); return s + eff.client*it.qty; },0);
+      const products = row.items.map(it=>it.product).join(' + ');
+      const descs = row.items.map(it=>it.desc).filter(Boolean).join(' / ');
+      const types = [...new Set(row.items.map(it=>catLabel(it.cat)))].join(', ');
+      const noteText = row.items.map(it=>resolveNoteText(it)).find(t=>t) || '';
+      cHtml += `<tr><td>${idx+1}</td><td>${types}</td>
+        <td class="left-al">${escapeHtml(products)}</td><td class="left-al">${escapeHtml(descs)}</td>
+        <td>1</td><td>—</td><td>${total.toFixed(2)}</td><td class="tag-note">${escapeHtml(noteText)}</td></tr>`;
+    }
+  });
+  cHtml += `</tbody></table>`;
+  document.getElementById('previewClient').innerHTML = items.length ? cHtml : '<div class="empty-state">No items yet</div>';
+}
+
+/* ============ excel export ============ */
+async function exportExcel(){
+  if(items.length===0){ alert('Add items first'); return; }
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Quotation');
+  const qNo = document.getElementById('qNo').value || '1';
+  const qDate = document.getElementById('qDate').value || '';
+  const dateLabel = qDate ? qDate.replace(/-/g,'') : '';
+  const cyan='FF12B6C9', orange='FFE07B1E', headBlue='FF0D2C56', lightGrey='FFF2F5F9', red='FFC23B3B';
+
+  ws.columns = [
+    {width:5},{width:16},{width:16},{width:16},{width:38},{width:6},{width:10},{width:10},{width:11},
+    {width:3},
+    {width:5},{width:16},{width:16},{width:38},{width:6},{width:11},{width:11},{width:20}
+  ];
+
+  function styleHeaderRow(rowNum, startCol, endCol, color, text){
+    ws.mergeCells(rowNum, startCol, rowNum, endCol);
+    const cell = ws.getCell(rowNum, startCol);
+    cell.value = text; cell.font = {bold:true, color:{argb:'FFFFFFFF'}, size:12};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+    cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:color}};
+    ws.getRow(rowNum).height = 22;
+  }
+  function styleTitleRow(rowNum, startCol, endCol, text){
+    ws.mergeCells(rowNum, startCol, rowNum, endCol);
+    const cell = ws.getCell(rowNum, startCol);
+    cell.value = text; cell.font = {bold:true, size:10};
+    cell.alignment = {horizontal:'center', vertical:'middle'};
+    cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:lightGrey}};
+  }
+  function tableHead(rowNum, startCol, headers, color){
+    headers.forEach((h,i)=>{
+      const cell = ws.getCell(rowNum, startCol+i);
+      cell.value = h; cell.font = {bold:true, color:{argb:'FFFFFFFF'}, size:9};
+      cell.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
+      cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:color}};
+      cell.border = {top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+    });
+  }
+  function borderCell(cell){
+    cell.border = {top:{style:'thin',color:{argb:'FFD9DEE6'}},bottom:{style:'thin',color:{argb:'FFD9DEE6'}},left:{style:'thin',color:{argb:'FFD9DEE6'}},right:{style:'thin',color:{argb:'FFD9DEE6'}}};
+  }
+
+  styleHeaderRow(1,1,9,cyan,'Vecow (PO)');
+  styleHeaderRow(1,11,18,orange,'Client');
+  styleTitleRow(2,1,9,`${qNo} Quotation _ ${dateLabel}`);
+  styleTitleRow(2,11,18,`${qNo} Quotation _ ${dateLabel}`);
+  const clientName = document.getElementById('qClient').value;
+  if(clientName){ styleTitleRow(3,1,9, 'Client: ' + clientName); ws.getRow(3).height = 16; }
+
+  const headRow = clientName ? 4 : 3;
+  tableHead(headRow, 1, ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','Total (USD)'], headBlue);
+  tableHead(headRow, 11, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
+
+  let r = headRow+1;
+  items.forEach((item, idx)=>{
+    const eff = getEffective(item);
+    const vals = [idx+1, item.pn, catLabel(item.cat), item.product, item.desc, item.qty,
+      Number(item.price.toFixed(2)), Number(eff.vecow.toFixed(2)), Number((eff.vecow*item.qty).toFixed(2))];
+    vals.forEach((v,i)=>{
+      const c = ws.getCell(r, i+1); c.value = v;
+      c.alignment = {horizontal:(i===3||i===4)?'left':'center', vertical:'middle', wrapText:true};
+      c.font = {size:9, color: i===7 ? {argb:red} : undefined, bold: i===7};
+      borderCell(c);
+    });
+    r++;
+  });
+
+  const rows = buildClientRows();
+  let rc = headRow+1;
+  rows.forEach((row, idx)=>{
+    let vals;
+    if(!row.merged){
+      const item = row.items[0]; const eff = getEffective(item);
+      vals = [idx+1, catLabel(item.cat), item.product, item.desc, item.qty,
+        Number(eff.client.toFixed(2)), Number((eff.client*item.qty).toFixed(2)), resolveNoteText(item)];
+    } else {
+      const total = row.items.reduce((s,it)=>{ const eff=getEffective(it); return s + eff.client*it.qty; },0);
+      const products = row.items.map(it=>it.product).join(' + ');
+      const descs = row.items.map(it=>it.desc).filter(Boolean).join(' / ');
+      const types = [...new Set(row.items.map(it=>catLabel(it.cat)))].join(', ');
+      const noteText = row.items.map(it=>resolveNoteText(it)).find(t=>t) || '';
+      vals = [idx+1, types, products, descs, 1, '—', Number(total.toFixed(2)), noteText];
+    }
+    vals.forEach((v,i)=>{
+      const c = ws.getCell(rc, 11+i); c.value = v;
+      c.alignment = {horizontal:(i===2||i===3||i===7)?'left':'center', vertical:'middle', wrapText:true};
+      c.font = {size:9};
+      borderCell(c);
+    });
+    rc++;
+  });
+
+  const filename = `Vecow_Quotation_${qNo}_${dateLabel||'draft'}.xlsx`;
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
