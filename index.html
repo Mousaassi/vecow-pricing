@@ -1133,6 +1133,30 @@ function resolveNoteText(item){
 function formatDate(d){ const dt = new Date(d); if(isNaN(dt)) return d; return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short'}); }
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+function mergedRowSummary(row){
+  const catsInGroup = [...new Set(row.items.map(it=>it.cat))];
+  const isSystemAdapterCombo =
+    catsInGroup.length >= 2 &&
+    catsInGroup.every(c=>c==='1a'||c==='1b'||c==='1') &&
+    catsInGroup.some(c=>c==='1a'||c==='1') &&
+    catsInGroup.includes('1b');
+
+  let types, products;
+  if(isSystemAdapterCombo){
+    types = '1. Vecow Systems & Power Adaptors';
+    const systemItems = row.items.filter(it=>it.cat==='1a'||it.cat==='1');
+    products = (systemItems.length ? systemItems : row.items).map(it=>it.product).join(' + ');
+  } else {
+    types = catsInGroup.map(c=>catLabel(c)).join(', ');
+    products = row.items.map(it=>it.product).join(' + ');
+  }
+
+  const descs = row.items.map(it=>it.desc).filter(Boolean).join(' / ');
+  const total = row.items.reduce((s,it)=>{ const eff=getEffective(it); return s + eff.client*it.qty; },0);
+  const noteText = row.items.map(it=>resolveNoteText(it)).find(t=>t) || '';
+  return { types, products, descs, total, noteText };
+}
+
 function buildClientRows(){
   const groups = {}; const singles = [];
   items.forEach(item=>{
@@ -1176,14 +1200,10 @@ function renderPreviews(){
         <td>${item.qty}</td><td>${eff.client.toFixed(2)}</td><td>${(eff.client*item.qty).toFixed(2)}</td>
         <td class="tag-note">${escapeHtml(resolveNoteText(item))}</td></tr>`;
     } else {
-      const total = row.items.reduce((s,it)=>{ const eff=getEffective(it); return s + eff.client*it.qty; },0);
-      const products = row.items.map(it=>it.product).join(' + ');
-      const descs = row.items.map(it=>it.desc).filter(Boolean).join(' / ');
-      const types = [...new Set(row.items.map(it=>catLabel(it.cat)))].join(', ');
-      const noteText = row.items.map(it=>resolveNoteText(it)).find(t=>t) || '';
-      cHtml += `<tr><td>${idx+1}</td><td>${types}</td>
-        <td class="left-al">${escapeHtml(products)}</td><td class="left-al">${escapeHtml(descs)}</td>
-        <td>1</td><td>—</td><td>${total.toFixed(2)}</td><td class="tag-note">${escapeHtml(noteText)}</td></tr>`;
+      const s = mergedRowSummary(row);
+      cHtml += `<tr><td>${idx+1}</td><td>${s.types}</td>
+        <td class="left-al">${escapeHtml(s.products)}</td><td class="left-al">${escapeHtml(s.descs)}</td>
+        <td>1</td><td>—</td><td>${s.total.toFixed(2)}</td><td class="tag-note">${escapeHtml(s.noteText)}</td></tr>`;
     }
   });
   cHtml += `</tbody></table>`;
@@ -1268,12 +1288,8 @@ async function exportExcel(){
       vals = [idx+1, catLabel(item.cat), item.product, item.desc, item.qty,
         Number(eff.client.toFixed(2)), Number((eff.client*item.qty).toFixed(2)), resolveNoteText(item)];
     } else {
-      const total = row.items.reduce((s,it)=>{ const eff=getEffective(it); return s + eff.client*it.qty; },0);
-      const products = row.items.map(it=>it.product).join(' + ');
-      const descs = row.items.map(it=>it.desc).filter(Boolean).join(' / ');
-      const types = [...new Set(row.items.map(it=>catLabel(it.cat)))].join(', ');
-      const noteText = row.items.map(it=>resolveNoteText(it)).find(t=>t) || '';
-      vals = [idx+1, types, products, descs, 1, '—', Number(total.toFixed(2)), noteText];
+      const s = mergedRowSummary(row);
+      vals = [idx+1, s.types, s.products, s.descs, 1, '—', Number(s.total.toFixed(2)), s.noteText];
     }
     vals.forEach((v,i)=>{
       const c = ws.getCell(rc, 11+i); c.value = v;
