@@ -85,7 +85,8 @@ input::placeholder{color:#9aa4b2;}
 @media(max-width:860px){.form-grid .f2,.form-grid .f3,.form-grid .f4,.form-grid .f6{grid-column:span 6;}}
 
 .cat-pill{display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px; font-size:.72rem; font-weight:700; color:#fff; white-space:nowrap; letter-spacing:.01em;}
-.cat-1{background:var(--navy-2);} .cat-2{background:var(--green);} .cat-3{background:var(--purple);} .cat-4{background:var(--orange);}
+.cat-1a{background:var(--navy-2);} .cat-1b{background:#4a6fa5;}
+.cat-2{background:var(--green);} .cat-3{background:var(--purple);} .cat-4{background:var(--orange);}
 
 button{cursor:pointer; border:none; border-radius:var(--radius-sm); padding:11px 20px; font-size:.87rem; font-weight:700; font-family:inherit; transition:filter .15s, transform .05s, box-shadow .15s;}
 button:active{transform:translateY(1px);}
@@ -197,7 +198,8 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
           <div class="f2">
             <label>Type</label>
             <select id="in_cat">
-              <option value="1">1. Vecow Systems &amp; Power Adaptors</option>
+              <option value="1a">1. Vecow System</option>
+              <option value="1b">1. Power Adaptor</option>
               <option value="2">2. Other Items (CPU, Modules, Cards)</option>
               <option value="3">3. Memory &amp; Storage</option>
               <option value="4">4. Outsourcing</option>
@@ -250,9 +252,11 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 
     <div class="card">
       <h2><span class="dot"></span>Items in this quotation</h2>
+      <div class="hint" style="margin-top:0;">Tick two or more rows and click "Merge selected" to combine them into one row on the Client table only — the Vecow table below always keeps every item listed separately.</div>
       <div class="table-scroll">
         <table id="itemsTable">
           <thead><tr>
+            <th><input type="checkbox" id="selectAllChk" onchange="toggleSelectAllItems(this)"></th>
             <th>#</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th>
             <th>Original price</th><th>Vecow U/P</th><th>Client U/P</th><th>Profit %</th>
             <th>Client note</th><th>Merge group</th><th></th>
@@ -260,6 +264,10 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
           <tbody id="itemsBody"></tbody>
         </table>
         <div id="emptyState" class="empty-state">No items yet — look up a PN above to add one.</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn-primary" onclick="mergeSelectedItems()">⛓ Merge selected</button>
+        <button class="btn-outline" onclick="unmergeSelectedItems()">Un-merge selected</button>
       </div>
     </div>
 
@@ -288,7 +296,8 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
         <div class="f2">
           <label>Type</label>
           <select id="cat_cat">
-            <option value="1">1. Vecow Systems &amp; Power Adaptors</option>
+            <option value="1a">1. Vecow System</option>
+            <option value="1b">1. Power Adaptor</option>
             <option value="2">2. Other Items (CPU, Modules, Cards)</option>
             <option value="3">3. Memory &amp; Storage</option>
             <option value="4">4. Outsourcing</option>
@@ -303,59 +312,8 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 
     <div class="card">
       <h2><span class="dot"></span>Bulk import</h2>
-      <div class="hint" style="margin:0 0 10px;">One device per line, fields separated by <strong>|</strong>: <code>PN | Type(1-4) | Product | Description | Price(optional)</code>. PNs that already exist in the catalog are skipped automatically, so it's safe to re-run this with the same list.</div>
-      <textarea id="bulkImportBox" rows="14" style="width:100%; font-family:ui-monospace,Consolas,monospace; font-size:.76rem; line-height:1.5;">90-VEK2000-010 | 1 | TGS-1000-165H | TGS-1000, onboard Intel Core Ultra 7 165H Processor (16 Cores), 1 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 3.2 Gen 2x2 Type-C, 2 HDMI 2.1, 1 DP, 12-24V DC-in
-90-VEK1000-010 | 1 | TGS-1000-135H | TGS-1000, onboard Intel Core Ultra 5 135H Processor (14 Cores), 1 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 3.2 Gen 2x2 Type-C, 2 HDMI 2.1, 1 DP, 12-24V DC-in
-90-VEL2000-010 | 1 | TGS-1500-165H | TGS-1500, onboard Intel Core Ultra 7 165H Processor (16 Cores), 1 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 3.2 Gen 2x2 Type-C, 2 HDMI 2.1, 3 DP, MXM Type-A supported, 24V DC-in
-90-VEL1000-010 | 1 | TGS-1500-135H | TGS-1500, onboard Intel Core Ultra 5 135H Processor (14 Cores), 1 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 3.2 Gen 2x2 Type-C, 2 HDMI 2.1, 3 DP, MXM Type-A supported, 1 DP, 24V DC-in
-90-VET2000-010 | 1 | TGS-1550-165H | TGS-1550, onboard Intel Core Ultra 7 165H Processor (16 Cores), 1 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 3.2 Gen 2x2 Type-C, 2 HDMI 2.1, 3 DP, MXM Type-B supported, 24V DC-in
-90-VET1000-010 | 1 | TGS-1550-135H | TGS-1550, onboard Intel Core Ultra 5 135H Processor (14 Cores), 1 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 3.2 Gen 2x2 Type-C, 2 HDMI 2.1, 3 DP, MXM Type-B supported, 1 DP, 24V DC-in
-90-VEV5000-010 | 1 | TGS-2000F-368H | TGS-2000F, onboard Intel Core Ultra X7 368H Processor (16 Cores), 2 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 2 Type-A, 2 HDMI 2.0, 1 USB3 Gen2x2 with DP, 12-24V DC-in
-90-VEU1000-010 | 1 | TGS-2000-386H | TGS-2000, onboard Intel Core Ultra 9 386H Processor (16 Cores), 2 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 2 Type-A, 2 HDMI 2.0, 1 USB3 Gen2x2 with DP, 12-24V DC-in
-90-VEV1000-010 | 1 | TGS-2000F-386H | TGS-2000F, onboard Intel Core Ultra 9 386H Processor (16 Cores), 2 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 2 Type-A, 2 HDMI 2.0, 1 USB3 Gen2x2 with DP, 12-24V DC-in
-90-VEU3000-010 | 1 | TGS-2000-336H | TGS-2000, onboard Intel Core Ultra 5 336H Processor (16 Cores), 2 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 2 Type-A, 2 HDMI 2.0, 1 USB3 Gen2x2 with DP, 12-24V DC-in
-90-VEV3000-010 | 1 | TGS-2000F-336H | TGS-2000F, onboard Intel Core Ultra 5 336H Processor (16 Cores), 2 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 2 Type-A, 2 HDMI 2.0, 1 USB3 Gen2x2 with DP, 12-24V DC-in
-90-VEW5000-010 | 1 | TGS-2500F-386H | TGS-2500F, onboard Intel Core Ultra 9 386H Processor (16 Cores), 2 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 2 Type-A, 2 HDMI 2.0, 1 USB3 Gen2x2 with DP, MXM Type-A supported, 24V DC-in only
-90-VEX5000-010 | 1 | TGS-2550F-386H | TGS-2550F, onboard Intel Core Ultra 9 386H Processor (16 Cores), 2 2.5G LAN, 2 USB 3.2 Gen 2, 1 USB 2 Type-A, 2 HDMI 2.0, 1 USB3 Gen2x2 with DP, MXM Type-B supported, 24V DC-in only
-90-VBK1000-010 | 1 | ECX-4000-PoE | ECX-4000, Intel Core Ultra Processor, 5 2.5G LAN w/4 PoE+, 1 GigE LAN, 6 USB 3.2, 16 Isolated DIO
-90-VBK2000-010 | 1 | ECX-4000-PoER | ECX-4000, Intel Core Ultra Processor, 5 2.5G LAN w/4 PoE+, 1 GigE LAN, 6 USB 3.2, 16 Isolated DIO, 2 SSD Tray
-90-VBK3000-010 | 1 | ECX-4000-6G | ECX-4000, Intel Core Ultra Processor, 5 2.5G LAN, 1 GigE LAN, 6 USB 3.2, 16 Isolated DIO
-90-VBK4000-010 | 1 | ECX-4000-6R | ECX-4000, Intel Core Ultra Processor, 5 2.5G LAN, 1 GigE LAN, 6 USB 3.2, 16 Isolated DIO, 2 SSD Tray
-90-VBK5000-010 | 1 | ECX-4000-2G | ECX-4000, Intel Core Ultra Processor, 1 2.5G LAN, 1 GigE LAN, 6 USB 3.2, 16 GPIO
-90-VBK6000-010 | 1 | ECX-4000-2R | ECX-4000, Intel Core Ultra Processor, 1 2.5G LAN, 1 GigE LAN, 6 USB 3.2, 16 GPIO, 2 SSD Tray
-90-VBK7000-010 | 1 | ECX-4025 | ECX-4000, Intel Core Ultra Processor, 8 2.5G LAN w/4 PoE+, 1 GigE LAN, 6 USB 3.2, 16 Isolated DIO
-90-VBK8000-010 | 1 | ECX-4025R | ECX-4000, Intel Core Ultra Processor, 8 2.5G LAN w/4 PoE+, 1 GigE LAN, 6 USB 3.2, 16 Isolated DIO, 2 SSD Tray
-90-VBK9000-010 | 1 | ECX-4071 | ECX-4000, Intel Core Ultra Processor, 2 10G SFP+, 5 2.5G LAN w/4 PoE+, 1 GigE LAN, 6 USB 3.2, 16 Isolated DIO
-90-VBKA000-010 | 1 | ECX-4071R | ECX-4000, Intel Core Ultra Processor, 2 10G SFP+, 5 2.5G LAN w/4 PoE+, 1 GigE LAN, 6 USB 3.2, 16 Isolated DIO, 2 SSD Tray
-71-74524E5-30K | 1 | PWA-120W1 | 120W, 24V, 90VAC to 264VAC Power Adapter with 3-pin Terminal Block
-71-74528E5-50K | 1 | PWA-180W | 180W, 24V, 90VAC to 264VAC Power Adapter with 3-pin Terminal Block (*Recommended with TGS-2500)
-71-7451167-AW4 | 1 | PWA-280W-WT | 280W, 24V, 85VAC to 264VAC Power Adaptor with 3-pin Terminal Block, Wide Temperature -30°C to +70°C (with Type B MXM)
-71-7456670-AW4 | 1 | PWA-160W-WT | 160W, 24V, 85VAC to 264VAC Power Adaptor with 3-pin Terminal Block, Wide Temperature -30°C to +70°C
-77-A370M00-M0G | 2 | MXM Intel Arc A370M | Intel Arc MXM A370M, 4GB GDDR6, 8 Xe core, 50W (recommended with TGS-1500)
-77-AD20008-M01 | 2 | MXMA2000 Ada-8G-60W | MXM RTX A2000 Ada, 8GB GDDR6, 2560 CUDA cores, 60W (recommended with TGS-1550 / TGS-2500F)
-77-AD50016-M01 | 2 | MXM RTX A5000 Ada | NVIDIA Ada MXM3.1 RTX A5000 Ada, 16GB GDDR6, 9728 CUDA cores, 115W (recommended with TGS-1550 / TGS-2500F)
-75-VV1DRKT-010 | 2 | Din Rail Kit | Din Rail Kit for TGS-1000/2000
-75-VV1VESA-010 | 2 | VESA Mount Kit | VESA Mount Kit for TGS-1000/2000
-75-VV1TBST-010 | 2 | Table Stand | Table Stand for TGS-1500/1550/2500
-90-VEM0000-010 | 2 | TGS-101 | Expansion Docking Module for 16-bit GPIO
-90-VEN0000-010 | 2 | TGS-102 | Expansion Docking Module for 16-bit Isolated DIO (8DI, 8DO)
-90-VEO0000-010 | 2 | TGS-103 | Expansion Docking Module for Type A MXM GPU (Without MXM GPU)
-90-VEP0000-010 | 2 | TGS-104 | Expansion Docking Module for 2 Isolated COM (RS-232/422/485)
-90-VEQ0000-010 | 2 | TGS-105 | Expansion Docking Module for 2 USB3
-90-VER0000-010 | 2 | TGS-106 | Expansion Docking Module for 2 1G LAN
-90-VES0000-010 | 2 | TGS-107 | Expansion Docking Module for Mini PCIe Wireless Module (Suitable with 4G/WiFi Module)
-71-13U2285-005 | 2 | Intel Core Ultra 9 285 | Series 2 Intel Core Ultra 9 285 Processor (36M Cache, up to 5.60 GHz, 65W)
-71-13U2265-005 | 2 | Intel Core Ultra 7 265 | Series 2 Intel Core Ultra 7 265 Processor (30M Cache, up to 5.30 GHz, 65W)
-71-13U2245-005 | 2 | Intel Core Ultra 5 245 | Series 2 Intel Core Ultra 5 245 Processor (24M Cache, up to 5.10 GHz, 65W)
-71-13U285T-005 | 2 | Intel Core Ultra 9 285T | Series 2 Intel Core Ultra 9 285T Processor (36M Cache, up to 5.40 GHz, 35W)
-71-13U265T-005 | 2 | Intel Core Ultra 7 265T | Series 2 Intel Core Ultra 7 265T Processor (30M Cache, up to 5.30 GHz, 35W)
-71-13U245T-005 | 2 | Intel Core Ultra 5 245T | Series 2 Intel Core Ultra 5 245T Processor (24M Cache, up to 5.10 GHz, 35W)
-75-VBJDNV0-020 | 2 | DIN Rail and VESA Mount Kit | DIN Rail and VESA Mount Kit for ECX-2X00/3000
-75-VBJVES0-020 | 2 | VESA Mount | VESA Mount for ECX-2000/3000
-75-VBJ2UR0-010 | 2 | 2U Rackmount kit | 2U Rackmount kit for ECX-2000/3000
-61-13O2211-3G9 | 2 | TMK2-20P-100 | Terminal Block 20-pin to Terminal Block 20-pin Cable, 100cm
-61-13O2211-3H9 | 2 | TMK2-20P-500 | Terminal Block 20-pin to Terminal Block 20-pin Cable, 500cm
-90-V510201-010 | 2 | TMB-TMBK-20P | Terminal Board with One 20-pin Terminal Block Connector and DIN-Rail Mounting</textarea>
+      <div class="hint" style="margin:0 0 10px;">One device per line, fields separated by <strong>|</strong>: <code>PN | Type | Product | Description | Price(optional)</code>. Type is <code>1a</code> (Vecow System), <code>1b</code> (Power Adaptor), <code>2</code> (Other Items), <code>3</code> (Memory &amp; Storage) or <code>4</code> (Outsourcing). PNs that already exist in the catalog are skipped automatically, so it's safe to re-run this with the same list.</div>
+      <textarea id="bulkImportBox" rows="14" style="width:100%; font-family:ui-monospace,Consolas,monospace; font-size:.76rem; line-height:1.5;"></textarea>
       <div class="toolbar">
         <button class="btn-primary" onclick="bulkImportCatalog()">⬆ Import all lines</button>
         <button class="btn-outline" onclick="document.getElementById('bulkImportBox').value=''">Clear box</button>
@@ -604,7 +562,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 function updateTierVisibility(){
   const cat = document.getElementById('in_cat').value;
   const isIntel = document.getElementById('in_intel').value === '1';
-  document.getElementById('tierWrap').style.display = (cat==='1' || (cat==='2' && !isIntel)) ? '' : 'none';
+  document.getElementById('tierWrap').style.display = (cat==='1a' || cat==='1b' || (cat==='2' && !isIntel)) ? '' : 'none';
   document.getElementById('intelDivWrap').style.display = (cat==='2' && isIntel) ? '' : 'none';
 }
 
@@ -613,7 +571,7 @@ function tierDivisor(qty){ if(qty>=100) return 0.8; if(qty>=50) return 0.75; ret
 function computeAuto(item){
   const orig = Number(item.price)||0; const qty = Number(item.qty)||1;
   let vecow, client;
-  if(item.cat==='1'){
+  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1'){
     vecow = orig*0.9;
     const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
     client = vecow/div;
@@ -632,8 +590,17 @@ function getEffective(item){
   };
 }
 function profitPct(vecow, client){ if(!client) return 0; return ((client-vecow)/client)*100; }
-function catLabel(cat){ return {'1':'1. Vecow Systems','2':'2. Other Items','3':'3. Memory & Storage','4':'4. Outsourcing'}[cat]; }
-function catClass(cat){ return 'cat-'+cat; }
+function catLabel(cat){
+  return {
+    '1a':'1. Vecow System', '1b':'1. Power Adaptor', '1':'1. Vecow Systems & Power Adaptors',
+    '2':'2. Other Items', '3':'3. Memory & Storage', '4':'4. Outsourcing'
+  }[cat] || cat;
+}
+function catClass(cat){
+  if(cat==='1a' || cat==='1') return 'cat-1a';
+  if(cat==='1b') return 'cat-1b';
+  return 'cat-'+cat;
+}
 
 /* ============ PN lookup / quick add flow ============ */
 function populatePnDatalist(){
@@ -861,7 +828,7 @@ async function bulkImportCatalog(){
     const desc = parts[3] || '';
     const priceRaw = parts[4];
     if(!pn || !product){ invalid.push(line); return; }
-    if(!['1','2','3','4'].includes(cat)) cat = '2';
+    if(!['1a','1b','1','2','3','4'].includes(cat)) cat = '2';
     const key = pn.toLowerCase();
     if(existingPns.has(key) || seenInBatch.has(key)){ skipped.push(pn); return; }
     seenInBatch.add(key);
@@ -945,7 +912,8 @@ function renderCatalog(){
       <td>${escapeHtml(c.pn)}</td>
       <td>
         <select onchange="updateCatalogField('${c.id}','cat',this.value)" style="min-width:150px;">
-          <option value="1" ${c.cat==='1'?'selected':''}>1. Vecow Systems</option>
+          <option value="1a" ${c.cat==='1a'?'selected':''}>1. Vecow System</option>
+          <option value="1b" ${c.cat==='1b'?'selected':''}>1. Power Adaptor</option>
           <option value="2" ${c.cat==='2'?'selected':''}>2. Other Items</option>
           <option value="3" ${c.cat==='3'?'selected':''}>3. Memory & Storage</option>
           <option value="4" ${c.cat==='4'?'selected':''}>4. Outsourcing</option>
@@ -958,6 +926,23 @@ function renderCatalog(){
     `;
     body.appendChild(tr);
   });
+}
+
+function toggleSelectAllItems(masterChk){
+  document.querySelectorAll('.item-select-chk').forEach(chk=>{ chk.checked = masterChk.checked; });
+}
+async function mergeSelectedItems(){
+  const checked = Array.from(document.querySelectorAll('.item-select-chk:checked')).map(el=>el.value);
+  if(checked.length < 2){ alert('Tick at least two items to merge.'); return; }
+  const groupId = 'grp_' + Date.now();
+  for(const id of checked){ await updateField(id, 'mergeGroup', groupId); }
+  document.getElementById('selectAllChk').checked = false;
+}
+async function unmergeSelectedItems(){
+  const checked = Array.from(document.querySelectorAll('.item-select-chk:checked')).map(el=>el.value);
+  if(checked.length === 0){ alert('Tick the item(s) you want to un-merge.'); return; }
+  for(const id of checked){ await updateField(id, 'mergeGroup', ''); }
+  document.getElementById('selectAllChk').checked = false;
 }
 
 /* ============ item CRUD ============ */
@@ -1109,6 +1094,7 @@ function render(){
     const tr = document.createElement('tr');
     if(pct < 20) tr.classList.add('low-margin');
     tr.innerHTML = `
+      <td><input type="checkbox" class="item-select-chk" value="${item.id}"></td>
       <td class="num">${idx+1}</td>
       <td>${escapeHtml(item.pn)}</td>
       <td><span class="cat-pill ${catClass(item.cat)}">${catLabel(item.cat)}${item.isIntel?' · Intel':''}</span></td>
