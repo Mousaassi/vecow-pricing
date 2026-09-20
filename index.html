@@ -87,6 +87,7 @@ input::placeholder{color:#9aa4b2;}
 .cat-pill{display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px; font-size:.72rem; font-weight:700; color:#fff; white-space:nowrap; letter-spacing:.01em;}
 .cat-1a{background:var(--navy-2);} .cat-1b{background:#4a6fa5;}
 .cat-2{background:var(--green);} .cat-3a{background:var(--purple);} .cat-3b{background:#9d6fd1;} .cat-4{background:var(--orange);}
+.cat-gc{background:#2f6f6f;} .cat-acc{background:#6b7280;}
 
 button{cursor:pointer; border:none; border-radius:var(--radius-sm); padding:11px 20px; font-size:.87rem; font-weight:700; font-family:inherit; transition:filter .15s, transform .05s, box-shadow .15s;}
 button:active{transform:translateY(1px);}
@@ -132,7 +133,7 @@ td input,td select{padding:6px 8px; font-size:.8rem;}
 .table-scroll{overflow-x:auto; border-radius:var(--radius-sm); border:1px solid var(--line);}
 .table-scroll table{border:none;}
 tr.low-margin td{background:var(--danger-bg);}
-.tag-note{font-size:.72rem; color:var(--ink-soft);}
+.tag-note{font-size:.72rem; color:var(--ink-soft); white-space:pre-line; text-align:left;}
 .num{font-variant-numeric:tabular-nums;} .left-al{text-align:left;}
 
 .section-tabs{display:flex; gap:8px; margin-bottom:16px;}
@@ -285,6 +286,8 @@ html[data-theme="burgundy"]{
               <option value="1a">Vecow System</option>
               <option value="1b">Power Adaptor</option>
               <option value="2">Other Items (CPU, Modules, Cards)</option>
+              <option value="gc">Graphics Card</option>
+              <option value="acc">Accessory</option>
               <option value="3a">RAM</option>
               <option value="3b">Storage</option>
               <option value="4">Outsourcing</option>
@@ -383,6 +386,8 @@ html[data-theme="burgundy"]{
             <option value="1a">Vecow System</option>
             <option value="1b">Power Adaptor</option>
             <option value="2">Other Items (CPU, Modules, Cards)</option>
+            <option value="gc">Graphics Card</option>
+            <option value="acc">Accessory</option>
             <option value="3a">RAM</option>
             <option value="3b">Storage</option>
             <option value="4">Outsourcing</option>
@@ -471,8 +476,10 @@ const noteTemplates = {
   'withmem': 'With Memory and Storage',
   'validtill': 'Valid till [date]',
   'stock': 'Subject to Stock Availability',
+  'compat': 'Compatibility note',
   'custom': 'Custom text…'
 };
+const compatNoteExample = 'Supported quantities: Refer to Compatibility List. / Accessories: Refer to Accessory List.\nCannot pre-install / Custom hold-on bar required for RCX-3000 / ICS-1000';
 
 const fieldToColumn = {
   qty:'qty', price:'price', vecowManual:'vecow_manual', clientManual:'client_manual',
@@ -654,7 +661,8 @@ async function refetchAddons(){
 
 async function refetchQuotations(){
   const { data, error } = await sb.from('quotations').select('*').order('created_at', {ascending:false});
-  if(!error){ savedQuotations = (data||[]).map(mapRowToQuotation); if(document.getElementById('tabDashboard').style.display!=='none') renderDashboard(); }
+  if(!error){ savedQuotations = (data||[]).map(mapRowToQuotation); renderDashboard(); }
+  else { console.error(error); }
 }
 function saveLocalQuotations(){ try{ localStorage.setItem('vecow_quotations', JSON.stringify(savedQuotations)); }catch(e){} }
 
@@ -695,7 +703,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 function updateTierVisibility(){
   const cat = document.getElementById('in_cat').value;
   const isIntel = document.getElementById('in_intel').value === '1';
-  document.getElementById('tierWrap').style.display = (cat==='1a' || cat==='1b' || (cat==='2' && !isIntel)) ? '' : 'none';
+  document.getElementById('tierWrap').style.display = (cat==='1a' || cat==='1b' || cat==='gc' || cat==='acc' || (cat==='2' && !isIntel)) ? '' : 'none';
   document.getElementById('intelDivWrap').style.display = (cat==='2' && isIntel) ? '' : 'none';
 }
 
@@ -708,8 +716,8 @@ function computeAuto(item){
     vecow = orig*0.9;
     const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
     client = vecow/div;
-  } else if(item.cat==='2'){
-    if(item.isIntel){ vecow = orig; client = orig/(Number(item.intelDiv)||0.8); }
+  } else if(item.cat==='2' || item.cat==='gc' || item.cat==='acc'){
+    if(item.cat==='2' && item.isIntel){ vecow = orig; client = orig/(Number(item.intelDiv)||0.8); }
     else { vecow = orig; const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier); client = orig/div; }
   } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){ vecow = orig/0.9; client = vecow/0.8; }
   else { vecow = orig; client = orig/0.8 + 30; }
@@ -726,7 +734,8 @@ function profitPct(vecow, client){ if(!client) return 0; return ((client-vecow)/
 function catLabel(cat){
   return {
     '1a':'Vecow System', '1b':'Power Adaptor', '1':'Vecow System & Power Adaptor',
-    '2':'Other Items', '3a':'RAM', '3b':'Storage', '3':'Memory & Storage', '4':'Outsourcing'
+    '2':'Other Items', 'gc':'Graphics Card', 'acc':'Accessory',
+    '3a':'RAM', '3b':'Storage', '3':'Memory & Storage', '4':'Outsourcing'
   }[cat] || cat;
 }
 function catClass(cat){
@@ -734,6 +743,8 @@ function catClass(cat){
   if(cat==='1b') return 'cat-1b';
   if(cat==='3a' || cat==='3') return 'cat-3a';
   if(cat==='3b') return 'cat-3b';
+  if(cat==='gc') return 'cat-gc';
+  if(cat==='acc') return 'cat-acc';
   return 'cat-'+cat;
 }
 
@@ -756,7 +767,7 @@ function updatePnState(){
     (c.product||'').toLowerCase()===pnVal.toLowerCase()
   );
   if(match){
-    const validCats = ['1a','1b','2','3a','3b','4'];
+    const validCats = ['1a','1b','2','gc','acc','3a','3b','4'];
     const matchCat = validCats.includes(match.cat) ? match.cat : '2';
     document.getElementById('in_cat').value = matchCat;
     document.getElementById('in_product').value = match.product || '';
@@ -994,6 +1005,8 @@ function renderCatalog(){
           <option value="1a" ${c.cat==='1a'?'selected':''}>Vecow System</option>
           <option value="1b" ${c.cat==='1b'?'selected':''}>Power Adaptor</option>
           <option value="2" ${c.cat==='2'?'selected':''}>Other Items</option>
+          <option value="gc" ${c.cat==='gc'?'selected':''}>Graphics Card</option>
+          <option value="acc" ${c.cat==='acc'?'selected':''}>Accessory</option>
           <option value="3a" ${c.cat==='3a'?'selected':''}>RAM</option>
           <option value="3b" ${c.cat==='3b'?'selected':''}>Storage</option>
           <option value="4" ${c.cat==='4'?'selected':''}>Outsourcing</option>
@@ -1050,12 +1063,12 @@ async function saveQuotation(){
   if(usingCloudQuotations){
     if(currentQuotationId){
       const { error } = await sb.from('quotations').update(snapshot).eq('id', currentQuotationId);
-      if(error){ console.error(error); toast('Could not update the saved quotation', 'error'); return; }
+      if(error){ console.error(error); toast('Could not update: ' + (error.message||JSON.stringify(error)), 'error'); return; }
       toast('Quotation updated', 'success');
     } else {
       snapshot.created_at = Date.now();
       const { data, error } = await sb.from('quotations').insert(snapshot).select().single();
-      if(error){ console.error(error); toast('Could not save the quotation', 'error'); return; }
+      if(error){ console.error(error); toast('Could not save: ' + (error.message||JSON.stringify(error)), 'error'); return; }
       currentQuotationId = data.id;
       toast('Quotation saved', 'success');
     }
@@ -1069,9 +1082,10 @@ async function saveQuotation(){
       savedQuotations.unshift({id:currentQuotationId, qNo:snapshot.q_no, qDate:snapshot.q_date, qClient:snapshot.q_client, items:snapshot.items, createdAt:Date.now(), updatedAt:snapshot.updated_at});
     }
     saveLocalQuotations();
-    toast('Quotation saved', 'success');
+    toast('Quotation saved (this device only — cloud table not connected)', 'success');
   }
   updateCurrentQStatus();
+  renderDashboard();
 }
 
 async function newQuotation(){
@@ -1233,7 +1247,7 @@ function renderDashboard(){
 
 /* ============ item CRUD ============ */
 async function addItem(){
-  const validCats = ['1a','1b','2','3a','3b','4'];
+  const validCats = ['1a','1b','2','gc','acc','3a','3b','4'];
   let cat = document.getElementById('in_cat').value;
   if(!validCats.includes(cat)) cat = '2';
   const price = document.getElementById('in_price').value;
@@ -1392,6 +1406,8 @@ function render(){
           <option value="1a" ${item.cat==='1a'?'selected':''}>Vecow System</option>
           <option value="1b" ${item.cat==='1b'?'selected':''}>Power Adaptor</option>
           <option value="2" ${item.cat==='2'?'selected':''}>Other Items</option>
+          <option value="gc" ${item.cat==='gc'?'selected':''}>Graphics Card</option>
+          <option value="acc" ${item.cat==='acc'?'selected':''}>Accessory</option>
           <option value="3a" ${item.cat==='3a'?'selected':''}>RAM</option>
           <option value="3b" ${item.cat==='3b'?'selected':''}>Storage</option>
           <option value="4" ${item.cat==='4'?'selected':''}>Outsourcing</option>
@@ -1417,17 +1433,26 @@ function render(){
 }
 
 function renderNoteCell(item){
-  let html = `<select onchange="updateField('${item.id}','note',this.value)" style="width:120px;">`;
+  let html = `<select onchange="handleNoteSelect('${item.id}', this.value)" style="width:130px;">`;
   Object.keys(noteTemplates).forEach(k=>{ html += `<option value="${k}" ${item.note===k?'selected':''}>${noteTemplates[k]}</option>`; });
   html += `</select>`;
-  if(item.note==='validtill') html += `<input type="date" value="${item.noteDate||''}" style="width:120px;margin-top:4px;" onchange="updateField('${item.id}','noteDate',this.value)">`;
-  if(item.note==='custom') html += `<input type="text" value="${escapeHtml(item.noteCustom||'')}" style="width:120px;margin-top:4px;" placeholder="Note text" onchange="updateField('${item.id}','noteCustom',this.value)">`;
+  if(item.note==='validtill') html += `<input type="date" value="${item.noteDate||''}" style="width:130px;margin-top:4px;" onchange="updateField('${item.id}','noteDate',this.value)">`;
+  if(item.note==='custom' || item.note==='compat'){
+    html += `<textarea rows="3" style="width:200px;margin-top:4px;font-size:.76rem;" placeholder="Note text" onchange="updateField('${item.id}','noteCustom',this.value)">${escapeHtml(item.noteCustom||'')}</textarea>`;
+  }
   return html;
+}
+async function handleNoteSelect(id, val){
+  const item = items.find(i=>i.id===id);
+  if(val==='compat' && item && !item.noteCustom){
+    await updateField(id, 'noteCustom', compatNoteExample);
+  }
+  await updateField(id, 'note', val);
 }
 function resolveNoteText(item){
   if(item.note==='') return '';
   if(item.note==='validtill') return 'Valid till ' + (item.noteDate ? formatDate(item.noteDate) : '');
-  if(item.note==='custom') return item.noteCustom || '';
+  if(item.note==='custom' || item.note==='compat') return item.noteCustom || '';
   return noteTemplates[item.note];
 }
 function formatDate(d){ const dt = new Date(d); if(isNaN(dt)) return d; return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short'}); }
