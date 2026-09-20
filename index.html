@@ -10,6 +10,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{
   --navy:#0a1830; --navy-2:#122a52; --ink:#141b2c; --ink-soft:#697089; --line:#e6e4dc;
@@ -142,6 +144,32 @@ tr.low-margin td{background:var(--danger-bg);}
 .merge-chip{background:#fff; border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size:.76rem; width:76px;}
 
 footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-weight:700; margin-top:30px; letter-spacing:.04em; font-family:"Manrope",sans-serif;}
+
+/* toasts */
+#toastHost{position:fixed; bottom:22px; right:22px; z-index:999; display:flex; flex-direction:column; gap:10px; align-items:flex-end;}
+.toast{
+  background:var(--navy); color:#fff; padding:12px 18px; border-radius:10px; font-size:.85rem; font-weight:600;
+  box-shadow:var(--shadow-md); display:flex; align-items:center; gap:10px; max-width:340px;
+  animation:toast-in .25s ease-out; border-left:3px solid var(--accent);
+}
+.toast.error{border-left-color:var(--danger);}
+.toast.success{border-left-color:var(--ok);}
+@keyframes toast-in{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+/* card entrance */
+@keyframes card-in{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+.card{animation:card-in .35s ease-out both;}
+
+/* dashboard */
+.kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;}
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+.bar-chart{display:flex; align-items:flex-end; gap:8px; height:160px; padding:10px 4px; overflow-x:auto;}
+.bar-chart .bar-col{display:flex; flex-direction:column; align-items:center; gap:6px; min-width:38px; flex:none;}
+.bar-chart .bar{width:26px; border-radius:6px 6px 0 0; background:linear-gradient(180deg,var(--accent),var(--navy)); transition:height .3s;}
+.bar-chart .bar-lbl{font-size:.65rem; color:var(--ink-soft); white-space:nowrap; max-width:50px; overflow:hidden; text-overflow:ellipsis;}
+.q-status{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:.7rem; font-weight:700;}
+.q-status.current{background:var(--ok-bg); color:var(--ok);}
+.q-status.saved{background:#eef1f6; color:var(--ink-soft);}
 </style>
 </head>
 <body>
@@ -157,13 +185,35 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
   <div class="stat-row" id="statRow"></div>
 
   <div class="maintabs">
-    <button class="maintab active" id="mtQuotation" onclick="setMainTab('quotation')">Quotation</button>
+    <button class="maintab active" id="mtDashboard" onclick="setMainTab('dashboard')">Dashboard</button>
+    <button class="maintab" id="mtQuotation" onclick="setMainTab('quotation')">Quotation</button>
     <button class="maintab" id="mtCatalog" onclick="setMainTab('catalog')">Product Catalog</button>
     <button class="maintab" id="mtAddons" onclick="setMainTab('addons')">Add-ons</button>
   </div>
 
+  <!-- ===================== DASHBOARD TAB ===================== -->
+  <div id="tabDashboard">
+    <div class="card">
+      <h2><span class="dot"></span>Business overview</h2>
+      <div class="kpi-row" id="kpiRow"></div>
+      <div class="hint" style="margin-bottom:8px;">Client value quoted per saved quotation (most recent first)</div>
+      <div class="bar-chart" id="dashboardChart"></div>
+    </div>
+    <div class="card">
+      <h2><span class="dot"></span>Saved quotations</h2>
+      <div class="hint" style="margin-top:0;">Save the quotation you're building any time from the Quotation tab. Loading a saved quotation replaces the current live items — save first if you want to keep them.</div>
+      <div class="table-scroll">
+        <table id="quotationsTable">
+          <thead><tr><th>No.</th><th>Date</th><th>Client</th><th>Items</th><th>Client Total</th><th>Margin</th><th></th></tr></thead>
+          <tbody id="quotationsBody"></tbody>
+        </table>
+        <div id="quotationsEmptyState" class="empty-state">No saved quotations yet — build one in the Quotation tab and click "Save quotation".</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== QUOTATION TAB ===================== -->
-  <div id="tabQuotation">
+  <div id="tabQuotation" style="display:none;">
 
     <div class="card">
       <h2><span class="dot"></span>Quotation details</h2>
@@ -171,6 +221,11 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
         <div><label>Quotation No.</label><input id="qNo" placeholder="e.g. 1"></div>
         <div><label>Date</label><input id="qDate" type="date"></div>
         <div><label>Client name (optional)</label><input id="qClient" placeholder="Company / client name"></div>
+      </div>
+      <div class="toolbar" style="align-items:center;">
+        <button class="btn-primary" onclick="saveQuotation()">💾 Save quotation</button>
+        <button class="btn-outline" onclick="newQuotation()">🆕 New quotation</button>
+        <span class="q-status" id="currentQStatus"></span>
       </div>
     </div>
 
@@ -281,6 +336,7 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
       <div id="previewClient" class="table-scroll" style="display:none;"></div>
       <div class="toolbar">
         <button class="btn-primary" onclick="exportExcel()">⬇ Export Excel</button>
+        <button class="btn-primary" onclick="exportPDF()">📄 Export Client PDF</button>
         <button class="btn-outline" onclick="clearAll()">Clear all items</button>
       </div>
     </div>
@@ -368,6 +424,7 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 
   <footer class="foot">Vecow Tech</footer>
 </div>
+<div id="toastHost"></div>
 
 <script>
 /* ============ Supabase connection ============ */
@@ -380,11 +437,15 @@ let usingCloud = false;
 let items = [];
 let catalog = [];
 let addons = [];
+let savedQuotations = [];
+let currentQuotationId = null;
 let localIdSeq = 1;
 let localCatIdSeq = 1;
 let localAddonIdSeq = 1;
+let localQuotationIdSeq = 1;
 let currentTab = 'vecow';
 let usingCloudAddons = false;
+let usingCloudQuotations = false;
 
 const noteTemplates = {
   '': 'No note',
@@ -404,13 +465,25 @@ function setSyncStatus(mode){
   // sync indicator UI removed — kept as a no-op so callers don't need to change.
 }
 
+function toast(msg, type){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' '+type : '');
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(), 300); }, 3200);
+}
+
 function setMainTab(tab){
+  document.getElementById('mtDashboard').classList.toggle('active', tab==='dashboard');
   document.getElementById('mtQuotation').classList.toggle('active', tab==='quotation');
   document.getElementById('mtCatalog').classList.toggle('active', tab==='catalog');
   document.getElementById('mtAddons').classList.toggle('active', tab==='addons');
+  document.getElementById('tabDashboard').style.display = tab==='dashboard' ? '' : 'none';
   document.getElementById('tabQuotation').style.display = tab==='quotation' ? '' : 'none';
   document.getElementById('tabCatalog').style.display = tab==='catalog' ? '' : 'none';
   document.getElementById('tabAddons').style.display = tab==='addons' ? '' : 'none';
+  if(tab==='dashboard') renderDashboard();
 }
 
 function mapRowToItem(row){
@@ -427,6 +500,9 @@ function mapRowToCatalog(row){
 }
 function mapRowToAddon(row){
   return { id: row.id, pn: row.pn || '', name: row.name, desc: row.description || '', price: row.price, compatibleSeries: row.compatible_series || '', createdAt: row.created_at };
+}
+function mapRowToQuotation(row){
+  return { id: row.id, qNo: row.q_no||'', qDate: row.q_date||'', qClient: row.q_client||'', items: row.items||[], createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
 /* ============ init / persistence ============ */
@@ -467,6 +543,20 @@ async function initPersistence(){
       renderAddons();
     }
 
+    try{
+      const { data: qData, error: qError } = await sb.from('quotations').select('*').order('created_at', {ascending:false});
+      if(qError) throw qError;
+      savedQuotations = (qData||[]).map(mapRowToQuotation);
+      usingCloudQuotations = true;
+      sb.channel('quotations-sync')
+        .on('postgres_changes', {event:'*', schema:'public', table:'quotations'}, ()=>{ refetchQuotations(); })
+        .subscribe();
+    } catch(qErr){
+      console.error('Quotations table not available yet, falling back to local storage for quotation history:', qErr);
+      usingCloudQuotations = false;
+      try{ const raw = localStorage.getItem('vecow_quotations'); if(raw) savedQuotations = JSON.parse(raw); }catch(e){ savedQuotations = []; }
+    }
+
     sb.channel('items-sync')
       .on('postgres_changes', {event:'*', schema:'public', table:'items'}, ()=>{ refetchItems(); })
       .subscribe();
@@ -482,6 +572,8 @@ async function initPersistence(){
         if(document.activeElement.id!=='qClient') document.getElementById('qClient').value = m.q_client || '';
       })
       .subscribe();
+    updateCurrentQStatus();
+    renderDashboard();
   } catch(e){
     const detail = (e && (e.message || e.error_description || e.details || e.hint)) || JSON.stringify(e);
     console.error('Supabase connection failed, falling back to local storage:', detail, e);
@@ -509,9 +601,16 @@ async function initPersistence(){
       if(raw) addons = JSON.parse(raw);
     }catch(err){ addons = []; }
     usingCloudAddons = false;
+    try{
+      const raw = localStorage.getItem('vecow_quotations');
+      if(raw) savedQuotations = JSON.parse(raw);
+    }catch(err){ savedQuotations = []; }
+    usingCloudQuotations = false;
     render();
     renderCatalog();
     renderAddons();
+    updateCurrentQStatus();
+    renderDashboard();
   }
 }
 
@@ -527,6 +626,12 @@ async function refetchAddons(){
   const { data, error } = await sb.from('addons').select('*').order('name', {ascending:true});
   if(!error){ addons = (data||[]).map(mapRowToAddon); renderAddons(); renderAddonCheckboxes(); }
 }
+
+async function refetchQuotations(){
+  const { data, error } = await sb.from('quotations').select('*').order('created_at', {ascending:false});
+  if(!error){ savedQuotations = (data||[]).map(mapRowToQuotation); if(document.getElementById('tabDashboard').style.display!=='none') renderDashboard(); }
+}
+function saveLocalQuotations(){ try{ localStorage.setItem('vecow_quotations', JSON.stringify(savedQuotations)); }catch(e){} }
 
 function saveLocalItems(){ try{ localStorage.setItem('vecow_items', JSON.stringify(items)); }catch(e){} }
 function saveLocalCatalog(){ try{ localStorage.setItem('vecow_catalog', JSON.stringify(catalog)); }catch(e){} }
@@ -945,6 +1050,199 @@ async function unmergeSelectedItems(){
   document.getElementById('selectAllChk').checked = false;
 }
 
+/* ============ quotation save / load / history ============ */
+function updateCurrentQStatus(){
+  const el = document.getElementById('currentQStatus');
+  if(!el) return;
+  if(currentQuotationId){
+    el.className = 'q-status saved';
+    el.textContent = 'Editing a saved quotation';
+  } else {
+    el.className = 'q-status current';
+    el.textContent = 'Unsaved / new quotation';
+  }
+}
+
+async function saveQuotation(){
+  if(items.length===0){ toast('Add at least one item before saving', 'error'); return; }
+  const snapshot = {
+    q_no: document.getElementById('qNo').value,
+    q_date: document.getElementById('qDate').value,
+    q_client: document.getElementById('qClient').value,
+    items: items,
+    updated_at: Date.now()
+  };
+  if(usingCloudQuotations){
+    if(currentQuotationId){
+      const { error } = await sb.from('quotations').update(snapshot).eq('id', currentQuotationId);
+      if(error){ console.error(error); toast('Could not update the saved quotation', 'error'); return; }
+      toast('Quotation updated', 'success');
+    } else {
+      snapshot.created_at = Date.now();
+      const { data, error } = await sb.from('quotations').insert(snapshot).select().single();
+      if(error){ console.error(error); toast('Could not save the quotation', 'error'); return; }
+      currentQuotationId = data.id;
+      toast('Quotation saved', 'success');
+    }
+    await refetchQuotations();
+  } else {
+    if(currentQuotationId){
+      const idx = savedQuotations.findIndex(q=>q.id===currentQuotationId);
+      if(idx>-1) savedQuotations[idx] = {id:currentQuotationId, qNo:snapshot.q_no, qDate:snapshot.q_date, qClient:snapshot.q_client, items:snapshot.items, createdAt:savedQuotations[idx].createdAt, updatedAt:snapshot.updated_at};
+    } else {
+      currentQuotationId = 'local_q_' + (localQuotationIdSeq++);
+      savedQuotations.unshift({id:currentQuotationId, qNo:snapshot.q_no, qDate:snapshot.q_date, qClient:snapshot.q_client, items:snapshot.items, createdAt:Date.now(), updatedAt:snapshot.updated_at});
+    }
+    saveLocalQuotations();
+    toast('Quotation saved', 'success');
+  }
+  updateCurrentQStatus();
+}
+
+async function newQuotation(){
+  if(items.length>0 && !confirm('Start a new quotation? Current items will be cleared (save first if you want to keep them).')) return;
+  if(usingCloud){
+    const { error } = await sb.from('items').delete().gte('created_at', 0);
+    if(error) console.error(error);
+  } else {
+    items = [];
+    saveLocalItems();
+  }
+  currentQuotationId = null;
+  document.getElementById('qNo').value = '';
+  document.getElementById('qDate').value = '';
+  document.getElementById('qClient').value = '';
+  await saveMeta();
+  updateCurrentQStatus();
+  render();
+  toast('Ready for a new quotation');
+}
+
+async function restoreItemsFromSnapshot(snapshotItems){
+  if(usingCloud){
+    const { error: delErr } = await sb.from('items').delete().gte('created_at', 0);
+    if(delErr){ console.error(delErr); toast('Could not clear current items', 'error'); return false; }
+    const rows = snapshotItems.map(it=>({
+      pn: it.pn, cat: it.cat, is_intel: it.isIntel, intel_div: it.intelDiv, tier: it.tier,
+      product: it.product, description: it.desc, qty: it.qty, price: it.price,
+      vecow_manual: it.vecowManual, client_manual: it.clientManual, note: it.note||'',
+      note_custom: it.noteCustom||'', note_date: it.noteDate||'', merge_group: it.mergeGroup||'',
+      created_at: it.createdAt || Date.now()
+    }));
+    if(rows.length){
+      const { error: insErr } = await sb.from('items').insert(rows);
+      if(insErr){ console.error(insErr); toast('Could not restore items', 'error'); return false; }
+    }
+    await refetchItems();
+  } else {
+    items = snapshotItems.map(it=>({...it, id:'local_'+(localIdSeq++)}));
+    saveLocalItems();
+    render();
+  }
+  return true;
+}
+
+async function loadQuotation(id){
+  const q = savedQuotations.find(x=>x.id===id);
+  if(!q) return;
+  if(items.length>0 && !confirm('Loading this quotation will replace the current live items. Continue?')) return;
+  const ok = await restoreItemsFromSnapshot(q.items||[]);
+  if(!ok) return;
+  document.getElementById('qNo').value = q.qNo||'';
+  document.getElementById('qDate').value = q.qDate||'';
+  document.getElementById('qClient').value = q.qClient||'';
+  await saveMeta();
+  currentQuotationId = id;
+  updateCurrentQStatus();
+  setMainTab('quotation');
+  toast('Quotation loaded');
+}
+
+async function duplicateQuotation(id){
+  const q = savedQuotations.find(x=>x.id===id);
+  if(!q) return;
+  if(items.length>0 && !confirm('Loading a duplicate will replace the current live items. Continue?')) return;
+  const ok = await restoreItemsFromSnapshot(q.items||[]);
+  if(!ok) return;
+  document.getElementById('qNo').value = (q.qNo||'') + ' (copy)';
+  document.getElementById('qDate').value = q.qDate||'';
+  document.getElementById('qClient').value = q.qClient||'';
+  await saveMeta();
+  currentQuotationId = null;
+  updateCurrentQStatus();
+  setMainTab('quotation');
+  toast('Duplicated — save it to keep as a new quotation');
+}
+
+async function deleteQuotation(id){
+  if(!confirm('Delete this saved quotation? This cannot be undone.')) return;
+  if(usingCloudQuotations){
+    const { error } = await sb.from('quotations').delete().eq('id', id);
+    if(error){ console.error(error); toast('Could not delete', 'error'); return; }
+    await refetchQuotations();
+  } else {
+    savedQuotations = savedQuotations.filter(q=>q.id!==id);
+    saveLocalQuotations();
+  }
+  if(currentQuotationId===id) currentQuotationId = null;
+  updateCurrentQStatus();
+  renderDashboard();
+  toast('Quotation deleted');
+}
+
+function quotationTotals(q){
+  let vecow=0, client=0;
+  (q.items||[]).forEach(it=>{ const eff=getEffective(it); vecow += eff.vecow*it.qty; client += eff.client*it.qty; });
+  const pct = client ? ((client-vecow)/client*100) : 0;
+  return {vecow, client, pct};
+}
+
+function renderDashboard(){
+  const totalQ = savedQuotations.length;
+  const totals = savedQuotations.map(q=>quotationTotals(q));
+  const totalClientValue = totals.reduce((s,t)=>s+t.client,0);
+  const avgMargin = totals.length ? totals.reduce((s,t)=>s+t.pct,0)/totals.length : 0;
+  const totalDevices = savedQuotations.reduce((s,q)=>s+(q.items||[]).length,0);
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="stat-card"><div class="stat-lbl">Saved Quotations</div><div class="stat-val">${totalQ}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Total Quoted Value</div><div class="stat-val">$${totalClientValue.toFixed(0)}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Average Margin</div><div class="stat-val ${avgMargin<20?'danger':'ok'}">${avgMargin.toFixed(1)}%</div></div>
+    <div class="stat-card"><div class="stat-lbl">Devices Quoted</div><div class="stat-val">${totalDevices}</div></div>
+  `;
+
+  const chartData = savedQuotations.slice(0,12);
+  const maxVal = Math.max(1, ...chartData.map(q=>quotationTotals(q).client));
+  document.getElementById('dashboardChart').innerHTML = chartData.length ? chartData.map(q=>{
+    const t = quotationTotals(q);
+    const h = Math.max(4, Math.round((t.client/maxVal)*140));
+    return `<div class="bar-col"><div class="bar" style="height:${h}px" title="$${t.client.toFixed(2)}"></div><div class="bar-lbl">${escapeHtml(q.qNo||'—')}</div></div>`;
+  }).join('') : '<div class="empty-state" style="padding:16px;">No saved quotations yet</div>';
+
+  const body = document.getElementById('quotationsBody');
+  const empty = document.getElementById('quotationsEmptyState');
+  body.innerHTML = '';
+  empty.style.display = savedQuotations.length===0 ? 'block' : 'none';
+  savedQuotations.forEach(q=>{
+    const t = quotationTotals(q);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(q.qNo||'—')} ${q.id===currentQuotationId?'<span class="q-status current">current</span>':''}</td>
+      <td>${escapeHtml(q.qDate||'—')}</td>
+      <td class="left-al">${escapeHtml(q.qClient||'—')}</td>
+      <td>${(q.items||[]).length}</td>
+      <td>$${t.client.toFixed(2)}</td>
+      <td style="color:${t.pct<20?'var(--danger)':'var(--ok)'}; font-weight:700;">${t.pct.toFixed(1)}%</td>
+      <td style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+        <button class="btn-outline" style="padding:5px 10px; font-size:.76rem;" onclick="loadQuotation('${q.id}')">Load</button>
+        <button class="btn-outline" style="padding:5px 10px; font-size:.76rem;" onclick="duplicateQuotation('${q.id}')">Duplicate</button>
+        <button class="btn-danger" onclick="deleteQuotation('${q.id}')">Delete</button>
+      </td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
 /* ============ item CRUD ============ */
 async function addItem(){
   const cat = document.getElementById('in_cat').value;
@@ -976,7 +1274,7 @@ async function addItem(){
       created_at: base.createdAt
     };
     const { error } = await sb.from('items').insert(row);
-    if(error){ console.error(error); alert('Could not save to the cloud. Item not added.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
+    if(error){ console.error(error); toast('Could not save to the cloud — item not added', 'error'); return; }
   } else {
     base.id = 'local_' + (localIdSeq++);
     items.push(base);
@@ -1009,6 +1307,7 @@ async function addItem(){
   document.getElementById('addonsBox').style.display='none';
   document.getElementById('showAllAddonsChk').checked=false;
   render();
+  toast(`${product} added to quotation`, 'success');
 }
 
 async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier){
@@ -1067,6 +1366,7 @@ async function clearAll(){
     saveLocalItems();
     render();
   }
+  toast('All items cleared');
 }
 
 /* ============ render ============ */
@@ -1210,7 +1510,92 @@ function renderPreviews(){
   document.getElementById('previewClient').innerHTML = items.length ? cHtml : '<div class="empty-state">No items yet</div>';
 }
 
-/* ============ excel export ============ */
+/* ============ client PDF export ============ */
+async function exportPDF(){
+  if(items.length===0){ toast('Add items first', 'error'); return; }
+  if(typeof window.jspdf === 'undefined'){ toast('PDF library failed to load', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  const navy = [10,24,48];
+  const gold = [176,141,63];
+
+  doc.setFillColor(...navy);
+  doc.rect(0,0,pageWidth,72,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.text('VECOW TECH', 40, 34);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(212,181,104);
+  doc.text('Client Quotation', 40, 50);
+
+  const qNo = document.getElementById('qNo').value || '—';
+  const qDate = document.getElementById('qDate').value || '—';
+  const qClient = document.getElementById('qClient').value || '';
+
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(9);
+  doc.text(`Quotation No: ${qNo}`, pageWidth-40, 30, {align:'right'});
+  doc.text(`Date: ${qDate}`, pageWidth-40, 44, {align:'right'});
+  if(qClient) doc.text(`Client: ${qClient}`, pageWidth-40, 58, {align:'right'});
+
+  const rows = buildClientRows();
+  const body = rows.map((row, idx)=>{
+    if(!row.merged){
+      const item = row.items[0]; const eff = getEffective(item);
+      return [idx+1, catLabel(item.cat), item.product, item.desc, item.qty, eff.client.toFixed(2), (eff.client*item.qty).toFixed(2), resolveNoteText(item)];
+    } else {
+      const s = mergedRowSummary(row);
+      return [idx+1, s.types, s.products, s.descs, 1, '—', s.total.toFixed(2), s.noteText];
+    }
+  });
+  const grandTotal = rows.reduce((sum,row)=>{
+    if(!row.merged){ const eff=getEffective(row.items[0]); return sum + eff.client*row.items[0].qty; }
+    return sum + mergedRowSummary(row).total;
+  }, 0);
+
+  doc.autoTable({
+    startY: 90,
+    head: [['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note']],
+    body: body,
+    styles: {fontSize:8, cellPadding:5, valign:'middle'},
+    headStyles: {fillColor:navy, textColor:255, fontStyle:'bold'},
+    alternateRowStyles: {fillColor:[248,247,243]},
+    columnStyles: {
+      0:{cellWidth:22, halign:'center'}, 1:{cellWidth:70}, 2:{cellWidth:85},
+      3:{cellWidth:150}, 4:{cellWidth:28, halign:'center'},
+      5:{cellWidth:55, halign:'right'}, 6:{cellWidth:60, halign:'right'}, 7:{cellWidth:70}
+    },
+    didDrawPage: (data)=>{
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(120,120,120);
+      doc.text(`Vecow Tech Trading L.L.C — Page ${data.pageNumber} of ${pageCount}`, 40, doc.internal.pageSize.getHeight()-20);
+    }
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 20;
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...navy);
+  doc.text(`Grand Total: $${grandTotal.toFixed(2)}`, pageWidth-40, finalY, {align:'right'});
+
+  doc.setDrawColor(...gold);
+  doc.setLineWidth(1);
+  doc.line(40, finalY+14, pageWidth-40, finalY+14);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(120,120,120);
+  doc.text('Clear Pricing · Healthy Profit · Sustainable Growth', 40, finalY+28);
+
+  const dateLabel = qDate ? qDate.replace(/-/g,'') : 'draft';
+  doc.save(`Vecow_Quotation_${qNo}_${dateLabel}.pdf`);
+  toast('PDF downloaded', 'success');
+}
+
 async function exportExcel(){
   if(items.length===0){ alert('Add items first'); return; }
   const wb = new ExcelJS.Workbook();
