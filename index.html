@@ -10,8 +10,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{
   --navy:#0a1830; --navy-2:#122a52; --ink:#141b2c; --ink-soft:#697089; --line:#e6e4dc;
@@ -170,6 +168,24 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 .q-status{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:.7rem; font-weight:700;}
 .q-status.current{background:var(--ok-bg); color:var(--ok);}
 .q-status.saved{background:#eef1f6; color:var(--ink-soft);}
+
+/* color themes */
+html[data-theme="dark"]{
+  --navy:#0a1830; --navy-2:#16294a; --ink:#e9edf6; --ink-soft:#9aa5bb; --line:#2a3550;
+  --paper:#0d1526; --card:#141d33; --accent:#d4b568; --accent-2:#e8cf8f;
+  --ok-bg:#0f2c1f; --danger-bg:#331414;
+}
+html[data-theme="ocean"]{
+  --navy:#0b2a4a; --navy-2:#123a63; --accent:#1d9bd8; --accent-2:#5fc2ef;
+}
+html[data-theme="emerald"]{
+  --navy:#0d2f22; --navy-2:#154a34; --accent:#c9a227; --accent-2:#e0bf55;
+}
+html[data-theme="burgundy"]{
+  --navy:#3a0d1c; --navy-2:#57132a; --accent:#c9974a; --accent-2:#e0b878;
+}
+.theme-picker{display:flex; align-items:center; gap:6px;}
+.theme-picker select{width:auto; padding:6px 10px; font-size:.8rem; border-radius:20px;}
 </style>
 </head>
 <body>
@@ -179,6 +195,16 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
     <div class="brand">
       <div class="brand-mark">V</div>
       <div class="brand-name">Vecow <span class="light">Tech</span></div>
+    </div>
+    <div class="theme-picker">
+      <label for="themeSelect" style="margin:0; font-size:.78rem;">🎨</label>
+      <select id="themeSelect" onchange="applyTheme(this.value)">
+        <option value="gold">Navy & Gold</option>
+        <option value="ocean">Ocean Blue</option>
+        <option value="emerald">Emerald</option>
+        <option value="burgundy">Burgundy</option>
+        <option value="dark">Dark Mode</option>
+      </select>
     </div>
   </header>
 
@@ -194,20 +220,23 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
   <!-- ===================== DASHBOARD TAB ===================== -->
   <div id="tabDashboard">
     <div class="card">
-      <h2><span class="dot"></span>Business overview</h2>
+      <h2><span class="dot"></span>Current quotation (live, unsaved)</h2>
+      <div class="kpi-row" id="liveKpiRow"></div>
+    </div>
+    <div class="card">
+      <h2><span class="dot"></span>Business overview — saved quotations</h2>
       <div class="kpi-row" id="kpiRow"></div>
-      <div class="hint" style="margin-bottom:8px;">Client value quoted per saved quotation (most recent first)</div>
+      <div class="hint" style="margin-bottom:8px;">Client value per saved quotation (most recent first)</div>
       <div class="bar-chart" id="dashboardChart"></div>
     </div>
     <div class="card">
       <h2><span class="dot"></span>Saved quotations</h2>
-      <div class="hint" style="margin-top:0;">Save the quotation you're building any time from the Quotation tab. Loading a saved quotation replaces the current live items — save first if you want to keep them.</div>
       <div class="table-scroll">
         <table id="quotationsTable">
           <thead><tr><th>No.</th><th>Date</th><th>Client</th><th>Items</th><th>Client Total</th><th>Margin</th><th></th></tr></thead>
           <tbody id="quotationsBody"></tbody>
         </table>
-        <div id="quotationsEmptyState" class="empty-state">No saved quotations yet — build one in the Quotation tab and click "Save quotation".</div>
+        <div id="quotationsEmptyState" class="empty-state">No saved quotations yet — click "Save quotation" in the Quotation tab to keep a snapshot.</div>
       </div>
     </div>
   </div>
@@ -336,7 +365,6 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
       <div id="previewClient" class="table-scroll" style="display:none;"></div>
       <div class="toolbar">
         <button class="btn-primary" onclick="exportExcel()">⬇ Export Excel</button>
-        <button class="btn-primary" onclick="exportPDF()">📄 Export Client PDF</button>
         <button class="btn-outline" onclick="clearAll()">Clear all items</button>
       </div>
     </div>
@@ -368,22 +396,8 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
     </div>
 
     <div class="card">
-      <h2><span class="dot"></span>Bulk import</h2>
-      <div class="hint" style="margin:0 0 10px;">One device per line, fields separated by <strong>|</strong>: <code>PN | Type | Product | Description | Price(optional)</code>. Type is <code>1a</code> (Vecow System), <code>1b</code> (Power Adaptor), <code>2</code> (Other Items), <code>3a</code> (RAM), <code>3b</code> (Storage) or <code>4</code> (Outsourcing). PNs that already exist in the catalog are skipped automatically, so it's safe to re-run this with the same list.</div>
-      <textarea id="bulkImportBox" rows="14" style="width:100%; font-family:ui-monospace,Consolas,monospace; font-size:.76rem; line-height:1.5;"></textarea>
-      <div class="toolbar">
-        <button class="btn-primary" onclick="bulkImportCatalog()">⬆ Import all lines</button>
-        <button class="btn-outline" onclick="document.getElementById('bulkImportBox').value=''">Clear box</button>
-      </div>
-      <div id="bulkImportResult" class="hint" style="margin-top:10px;"></div>
-    </div>
-
-    <div class="card">
       <h2><span class="dot"></span>All devices</h2>
-      <div class="toolbar" style="margin-top:0; margin-bottom:12px;">
-        <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()" style="flex:1; min-width:200px;">
-        <button class="btn-outline" onclick="fixLegacyCategories()">🔧 Fix legacy Types</button>
-      </div>
+      <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()">
       <div class="table-scroll" style="margin-top:12px;">
         <table id="catalogTable">
           <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th></th></tr></thead>
@@ -467,6 +481,13 @@ const fieldToColumn = {
 
 function setSyncStatus(mode){
   // sync indicator UI removed — kept as a no-op so callers don't need to change.
+}
+
+function applyTheme(name){
+  document.documentElement.setAttribute('data-theme', name);
+  const sel = document.getElementById('themeSelect');
+  if(sel) sel.value = name;
+  try{ localStorage.setItem('vecow_theme', name); }catch(e){}
 }
 
 function toast(msg, type){
@@ -656,6 +677,9 @@ async function saveMeta(){
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
+  let savedTheme = 'gold';
+  try{ savedTheme = localStorage.getItem('vecow_theme') || 'gold'; }catch(e){}
+  applyTheme(savedTheme);
   ['qNo','qDate','qClient'].forEach(id=>document.getElementById(id).addEventListener('change', saveMeta));
   document.getElementById('in_cat').addEventListener('change', function(){
     document.getElementById('intelWrap').style.display = (this.value==='2') ? '' : 'none';
@@ -732,19 +756,21 @@ function updatePnState(){
     (c.product||'').toLowerCase()===pnVal.toLowerCase()
   );
   if(match){
-    document.getElementById('in_cat').value = match.cat;
+    const validCats = ['1a','1b','2','3a','3b','4'];
+    const matchCat = validCats.includes(match.cat) ? match.cat : '2';
+    document.getElementById('in_cat').value = matchCat;
     document.getElementById('in_product').value = match.product || '';
     document.getElementById('in_desc').value = match.desc || '';
     if((match.price!=null && match.price!=='') && !document.getElementById('in_price').value){
       document.getElementById('in_price').value = match.price;
     }
-    document.getElementById('pnPreviewCat').className = 'cat-pill ' + catClass(match.cat);
-    document.getElementById('pnPreviewCat').textContent = catLabel(match.cat);
+    document.getElementById('pnPreviewCat').className = 'cat-pill ' + catClass(matchCat);
+    document.getElementById('pnPreviewCat').textContent = catLabel(matchCat);
     document.getElementById('pnPreviewProduct').textContent = match.product || '';
     document.getElementById('pnPreviewDesc').textContent = match.desc || '';
     preview.style.display = 'flex';
     newFields.style.display = 'none';
-    document.getElementById('intelWrap').style.display = (match.cat==='2') ? '' : 'none';
+    document.getElementById('intelWrap').style.display = (matchCat==='2') ? '' : 'none';
     updateTierVisibility();
   } else {
     preview.style.display = 'none';
@@ -880,35 +906,6 @@ function renderAddons(){
   });
 }
 
-function guessSplitCategory(cat, product, desc){
-  const text = ((product||'')+' '+(desc||'')).toLowerCase();
-  if(cat==='1'){
-    if(/adapt|pwa-|power supply/i.test(text)) return '1b';
-    return '1a';
-  }
-  if(cat==='3'){
-    if(/ssd|nvme|hdd|emmc|m\.2|storage/i.test(text)) return '3b';
-    return '3a';
-  }
-  return cat;
-}
-async function fixLegacyCategories(){
-  let fixed = 0;
-  for(const c of catalog){
-    if(c.cat==='1' || c.cat==='3'){
-      await updateCatalogField(c.id, 'cat', guessSplitCategory(c.cat, c.product, c.desc));
-      fixed++;
-    }
-  }
-  for(const it of items){
-    if(it.cat==='1' || it.cat==='3'){
-      await updateField(it.id, 'cat', guessSplitCategory(it.cat, it.product, it.desc));
-      fixed++;
-    }
-  }
-  toast(fixed ? `Reclassified ${fixed} legacy item(s) — double-check they landed correctly` : 'No legacy items found', fixed?'success':undefined);
-}
-
 /* ============ catalog: CRUD ============ */
 async function addCatalogItem(){
   const pn = document.getElementById('cat_pn').value.trim();
@@ -945,64 +942,6 @@ async function addCatalogItem(){
     renderCatalog();
   }
   ['cat_pn','cat_product','cat_desc','cat_price'].forEach(id=>document.getElementById(id).value='');
-}
-
-/* ============ catalog: bulk import ============ */
-async function bulkImportCatalog(){
-  const box = document.getElementById('bulkImportBox');
-  const resultEl = document.getElementById('bulkImportResult');
-  const lines = box.value.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
-  if(lines.length===0){ resultEl.textContent = 'Paste some lines first.'; return; }
-
-  const existingPns = new Set(catalog.map(c=>(c.pn||'').toLowerCase()));
-  const toAdd = [];
-  const skipped = [];
-  const invalid = [];
-  const seenInBatch = new Set();
-
-  lines.forEach(line=>{
-    const parts = line.split('|').map(p=>p.trim());
-    const pn = parts[0] || '';
-    let cat = parts[1] || '2';
-    const product = parts[2] || '';
-    const desc = parts[3] || '';
-    const priceRaw = parts[4];
-    if(!pn || !product){ invalid.push(line); return; }
-    if(!['1a','1b','1','2','3a','3b','3','4'].includes(cat)) cat = '2';
-    const key = pn.toLowerCase();
-    if(existingPns.has(key) || seenInBatch.has(key)){ skipped.push(pn); return; }
-    seenInBatch.add(key);
-    toAdd.push({
-      pn, cat, product, desc,
-      price: (priceRaw!==undefined && priceRaw!=='') ? Number(priceRaw) : null,
-      createdAt: Date.now()
-    });
-  });
-
-  if(toAdd.length===0){
-    resultEl.textContent = `Nothing to import. Skipped ${skipped.length} existing/duplicate PN(s), ${invalid.length} invalid line(s).`;
-    return;
-  }
-
-  if(usingCloud){
-    const rows = toAdd.map(d=>({pn:d.pn, cat:d.cat, product:d.product, description:d.desc, price:d.price, created_at:d.createdAt}));
-    const { error } = await sb.from('catalog').insert(rows);
-    if(error){
-      console.error(error);
-      resultEl.textContent = 'Import failed: ' + (error.message||error.details||JSON.stringify(error));
-      return;
-    }
-    // realtime subscription will refetch, but refresh immediately too
-    await refetchCatalog();
-  } else {
-    toAdd.forEach(d=>{
-      catalog.push({id:'local_cat_'+(localCatIdSeq++), pn:d.pn, cat:d.cat, product:d.product, desc:d.desc, price:d.price, createdAt:d.createdAt});
-    });
-    saveLocalCatalog();
-    renderCatalog();
-  }
-
-  resultEl.textContent = `Imported ${toAdd.length} item(s). Skipped ${skipped.length} existing/duplicate PN(s)${invalid.length? ', '+invalid.length+' invalid line(s)':''}.`;
 }
 
 async function removeCatalogItem(id){
@@ -1234,6 +1173,19 @@ function quotationTotals(q){
 }
 
 function renderDashboard(){
+  const liveVecow = items.reduce((s,it)=>{ const eff=getEffective(it); return s+eff.vecow*it.qty; },0);
+  const liveClient = items.reduce((s,it)=>{ const eff=getEffective(it); return s+eff.client*it.qty; },0);
+  const livePct = liveClient ? ((liveClient-liveVecow)/liveClient*100) : 0;
+  const liveEl = document.getElementById('liveKpiRow');
+  if(liveEl){
+    liveEl.innerHTML = `
+      <div class="stat-card"><div class="stat-lbl">Items right now</div><div class="stat-val">${items.length}</div></div>
+      <div class="stat-card"><div class="stat-lbl">Vecow Cost</div><div class="stat-val">$${liveVecow.toFixed(2)}</div></div>
+      <div class="stat-card"><div class="stat-lbl">Client Price</div><div class="stat-val">$${liveClient.toFixed(2)}</div></div>
+      <div class="stat-card"><div class="stat-lbl">Margin</div><div class="stat-val ${livePct<20?'danger':'ok'}">${livePct.toFixed(1)}%</div></div>
+    `;
+  }
+
   const totalQ = savedQuotations.length;
   const totals = savedQuotations.map(q=>quotationTotals(q));
   const totalClientValue = totals.reduce((s,t)=>s+t.client,0);
@@ -1281,7 +1233,9 @@ function renderDashboard(){
 
 /* ============ item CRUD ============ */
 async function addItem(){
-  const cat = document.getElementById('in_cat').value;
+  const validCats = ['1a','1b','2','3a','3b','4'];
+  let cat = document.getElementById('in_cat').value;
+  if(!validCats.includes(cat)) cat = '2';
   const price = document.getElementById('in_price').value;
   const product = document.getElementById('in_product').value;
   const pn = document.getElementById('in_pn').value.trim() || 'N/A';
@@ -1433,7 +1387,16 @@ function render(){
       <td><input type="checkbox" class="item-select-chk" value="${item.id}"></td>
       <td class="num">${idx+1}</td>
       <td>${escapeHtml(item.pn)}</td>
-      <td><span class="cat-pill ${catClass(item.cat)}">${catLabel(item.cat)}${item.isIntel?' · Intel':''}</span></td>
+      <td>
+        <select onchange="updateField('${item.id}','cat',this.value)" style="min-width:130px;">
+          <option value="1a" ${item.cat==='1a'?'selected':''}>Vecow System</option>
+          <option value="1b" ${item.cat==='1b'?'selected':''}>Power Adaptor</option>
+          <option value="2" ${item.cat==='2'?'selected':''}>Other Items</option>
+          <option value="3a" ${item.cat==='3a'?'selected':''}>RAM</option>
+          <option value="3b" ${item.cat==='3b'?'selected':''}>Storage</option>
+          <option value="4" ${item.cat==='4'?'selected':''}>Outsourcing</option>
+        </select>
+      </td>
       <td class="left-al">${escapeHtml(item.product)}</td>
       <td class="left-al" style="max-width:220px;">${escapeHtml(item.desc||'')}</td>
       <td class="num"><input type="number" min="1" value="${item.qty}" style="width:60px" onchange="updateField('${item.id}','qty',Number(this.value))"></td>
@@ -1450,6 +1413,7 @@ function render(){
 
   renderStats();
   renderPreviews();
+  if(document.getElementById('liveKpiRow')) renderDashboard();
 }
 
 function renderNoteCell(item){
@@ -1546,91 +1510,6 @@ function renderPreviews(){
   document.getElementById('previewClient').innerHTML = items.length ? cHtml : '<div class="empty-state">No items yet</div>';
 }
 
-/* ============ client PDF export ============ */
-async function exportPDF(){
-  if(items.length===0){ toast('Add items first', 'error'); return; }
-  if(typeof window.jspdf === 'undefined'){ toast('PDF library failed to load', 'error'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:'pt', format:'a4'});
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  const navy = [10,24,48];
-  const gold = [176,141,63];
-
-  doc.setFillColor(...navy);
-  doc.rect(0,0,pageWidth,72,'F');
-  doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(20);
-  doc.text('VECOW TECH', 40, 34);
-  doc.setFont('helvetica','normal');
-  doc.setFontSize(9);
-  doc.setTextColor(212,181,104);
-  doc.text('Client Quotation', 40, 50);
-
-  const qNo = document.getElementById('qNo').value || '—';
-  const qDate = document.getElementById('qDate').value || '—';
-  const qClient = document.getElementById('qClient').value || '';
-
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(9);
-  doc.text(`Quotation No: ${qNo}`, pageWidth-40, 30, {align:'right'});
-  doc.text(`Date: ${qDate}`, pageWidth-40, 44, {align:'right'});
-  if(qClient) doc.text(`Client: ${qClient}`, pageWidth-40, 58, {align:'right'});
-
-  const rows = buildClientRows();
-  const body = rows.map((row, idx)=>{
-    if(!row.merged){
-      const item = row.items[0]; const eff = getEffective(item);
-      return [idx+1, catLabel(item.cat), item.product, item.desc, item.qty, eff.client.toFixed(2), (eff.client*item.qty).toFixed(2), resolveNoteText(item)];
-    } else {
-      const s = mergedRowSummary(row);
-      return [idx+1, s.types, s.products, s.descs, 1, '—', s.total.toFixed(2), s.noteText];
-    }
-  });
-  const grandTotal = rows.reduce((sum,row)=>{
-    if(!row.merged){ const eff=getEffective(row.items[0]); return sum + eff.client*row.items[0].qty; }
-    return sum + mergedRowSummary(row).total;
-  }, 0);
-
-  doc.autoTable({
-    startY: 90,
-    head: [['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note']],
-    body: body,
-    styles: {fontSize:8, cellPadding:5, valign:'middle'},
-    headStyles: {fillColor:navy, textColor:255, fontStyle:'bold'},
-    alternateRowStyles: {fillColor:[248,247,243]},
-    columnStyles: {
-      0:{cellWidth:22, halign:'center'}, 1:{cellWidth:70}, 2:{cellWidth:85},
-      3:{cellWidth:150}, 4:{cellWidth:28, halign:'center'},
-      5:{cellWidth:55, halign:'right'}, 6:{cellWidth:60, halign:'right'}, 7:{cellWidth:70}
-    },
-    didDrawPage: (data)=>{
-      const pageCount = doc.internal.getNumberOfPages();
-      doc.setFontSize(8);
-      doc.setTextColor(120,120,120);
-      doc.text(`Vecow Tech Trading L.L.C — Page ${data.pageNumber} of ${pageCount}`, 40, doc.internal.pageSize.getHeight()-20);
-    }
-  });
-
-  const finalY = doc.lastAutoTable.finalY + 20;
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...navy);
-  doc.text(`Grand Total: $${grandTotal.toFixed(2)}`, pageWidth-40, finalY, {align:'right'});
-
-  doc.setDrawColor(...gold);
-  doc.setLineWidth(1);
-  doc.line(40, finalY+14, pageWidth-40, finalY+14);
-  doc.setFont('helvetica','normal');
-  doc.setFontSize(8);
-  doc.setTextColor(120,120,120);
-  doc.text('Clear Pricing · Healthy Profit · Sustainable Growth', 40, finalY+28);
-
-  const dateLabel = qDate ? qDate.replace(/-/g,'') : 'draft';
-  doc.save(`Vecow_Quotation_${qNo}_${dateLabel}.pdf`);
-  toast('PDF downloaded', 'success');
-}
 
 async function exportExcel(){
   if(items.length===0){ alert('Add items first'); return; }
