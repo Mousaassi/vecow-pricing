@@ -88,7 +88,7 @@ input::placeholder{color:#9aa4b2;}
 
 .cat-pill{display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px; font-size:.72rem; font-weight:700; color:#fff; white-space:nowrap; letter-spacing:.01em;}
 .cat-1a{background:var(--navy-2);} .cat-1b{background:#4a6fa5;}
-.cat-2{background:var(--green);} .cat-3{background:var(--purple);} .cat-4{background:var(--orange);}
+.cat-2{background:var(--green);} .cat-3a{background:var(--purple);} .cat-3b{background:#9d6fd1;} .cat-4{background:var(--orange);}
 
 button{cursor:pointer; border:none; border-radius:var(--radius-sm); padding:11px 20px; font-size:.87rem; font-weight:700; font-family:inherit; transition:filter .15s, transform .05s, box-shadow .15s;}
 button:active{transform:translateY(1px);}
@@ -253,11 +253,12 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
           <div class="f2">
             <label>Type</label>
             <select id="in_cat">
-              <option value="1a">1. Vecow System</option>
-              <option value="1b">1. Power Adaptor</option>
-              <option value="2">2. Other Items (CPU, Modules, Cards)</option>
-              <option value="3">3. Memory &amp; Storage</option>
-              <option value="4">4. Outsourcing</option>
+              <option value="1a">Vecow System</option>
+              <option value="1b">Power Adaptor</option>
+              <option value="2">Other Items (CPU, Modules, Cards)</option>
+              <option value="3a">RAM</option>
+              <option value="3b">Storage</option>
+              <option value="4">Outsourcing</option>
             </select>
           </div>
           <div class="f4"><label>Product</label><input id="in_product" placeholder="e.g. ECX-3200-PEG"></div>
@@ -307,7 +308,6 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 
     <div class="card">
       <h2><span class="dot"></span>Items in this quotation</h2>
-      <div class="hint" style="margin-top:0;">Tick two or more rows and click "Merge selected" to combine them into one row on the Client table only — the Vecow table below always keeps every item listed separately.</div>
       <div class="table-scroll">
         <table id="itemsTable">
           <thead><tr>
@@ -352,11 +352,12 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
         <div class="f2">
           <label>Type</label>
           <select id="cat_cat">
-            <option value="1a">1. Vecow System</option>
-            <option value="1b">1. Power Adaptor</option>
-            <option value="2">2. Other Items (CPU, Modules, Cards)</option>
-            <option value="3">3. Memory &amp; Storage</option>
-            <option value="4">4. Outsourcing</option>
+            <option value="1a">Vecow System</option>
+            <option value="1b">Power Adaptor</option>
+            <option value="2">Other Items (CPU, Modules, Cards)</option>
+            <option value="3a">RAM</option>
+            <option value="3b">Storage</option>
+            <option value="4">Outsourcing</option>
           </select>
         </div>
         <div class="f3"><label>Product</label><input id="cat_product" placeholder="e.g. ECX-3200-PEG"></div>
@@ -368,7 +369,7 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 
     <div class="card">
       <h2><span class="dot"></span>Bulk import</h2>
-      <div class="hint" style="margin:0 0 10px;">One device per line, fields separated by <strong>|</strong>: <code>PN | Type | Product | Description | Price(optional)</code>. Type is <code>1a</code> (Vecow System), <code>1b</code> (Power Adaptor), <code>2</code> (Other Items), <code>3</code> (Memory &amp; Storage) or <code>4</code> (Outsourcing). PNs that already exist in the catalog are skipped automatically, so it's safe to re-run this with the same list.</div>
+      <div class="hint" style="margin:0 0 10px;">One device per line, fields separated by <strong>|</strong>: <code>PN | Type | Product | Description | Price(optional)</code>. Type is <code>1a</code> (Vecow System), <code>1b</code> (Power Adaptor), <code>2</code> (Other Items), <code>3a</code> (RAM), <code>3b</code> (Storage) or <code>4</code> (Outsourcing). PNs that already exist in the catalog are skipped automatically, so it's safe to re-run this with the same list.</div>
       <textarea id="bulkImportBox" rows="14" style="width:100%; font-family:ui-monospace,Consolas,monospace; font-size:.76rem; line-height:1.5;"></textarea>
       <div class="toolbar">
         <button class="btn-primary" onclick="bulkImportCatalog()">⬆ Import all lines</button>
@@ -379,7 +380,10 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 
     <div class="card">
       <h2><span class="dot"></span>All devices</h2>
-      <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()">
+      <div class="toolbar" style="margin-top:0; margin-bottom:12px;">
+        <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()" style="flex:1; min-width:200px;">
+        <button class="btn-outline" onclick="fixLegacyCategories()">🔧 Fix legacy Types</button>
+      </div>
       <div class="table-scroll" style="margin-top:12px;">
         <table id="catalogTable">
           <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th></th></tr></thead>
@@ -683,7 +687,7 @@ function computeAuto(item){
   } else if(item.cat==='2'){
     if(item.isIntel){ vecow = orig; client = orig/(Number(item.intelDiv)||0.8); }
     else { vecow = orig; const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier); client = orig/div; }
-  } else if(item.cat==='3'){ vecow = orig/0.9; client = vecow/0.8; }
+  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){ vecow = orig/0.9; client = vecow/0.8; }
   else { vecow = orig; client = orig/0.8 + 30; }
   return {vecow, client};
 }
@@ -697,13 +701,15 @@ function getEffective(item){
 function profitPct(vecow, client){ if(!client) return 0; return ((client-vecow)/client)*100; }
 function catLabel(cat){
   return {
-    '1a':'1. Vecow System', '1b':'1. Power Adaptor', '1':'1. Vecow Systems & Power Adaptors',
-    '2':'2. Other Items', '3':'3. Memory & Storage', '4':'4. Outsourcing'
+    '1a':'Vecow System', '1b':'Power Adaptor', '1':'Vecow System & Power Adaptor',
+    '2':'Other Items', '3a':'RAM', '3b':'Storage', '3':'Memory & Storage', '4':'Outsourcing'
   }[cat] || cat;
 }
 function catClass(cat){
   if(cat==='1a' || cat==='1') return 'cat-1a';
   if(cat==='1b') return 'cat-1b';
+  if(cat==='3a' || cat==='3') return 'cat-3a';
+  if(cat==='3b') return 'cat-3b';
   return 'cat-'+cat;
 }
 
@@ -874,6 +880,35 @@ function renderAddons(){
   });
 }
 
+function guessSplitCategory(cat, product, desc){
+  const text = ((product||'')+' '+(desc||'')).toLowerCase();
+  if(cat==='1'){
+    if(/adapt|pwa-|power supply/i.test(text)) return '1b';
+    return '1a';
+  }
+  if(cat==='3'){
+    if(/ssd|nvme|hdd|emmc|m\.2|storage/i.test(text)) return '3b';
+    return '3a';
+  }
+  return cat;
+}
+async function fixLegacyCategories(){
+  let fixed = 0;
+  for(const c of catalog){
+    if(c.cat==='1' || c.cat==='3'){
+      await updateCatalogField(c.id, 'cat', guessSplitCategory(c.cat, c.product, c.desc));
+      fixed++;
+    }
+  }
+  for(const it of items){
+    if(it.cat==='1' || it.cat==='3'){
+      await updateField(it.id, 'cat', guessSplitCategory(it.cat, it.product, it.desc));
+      fixed++;
+    }
+  }
+  toast(fixed ? `Reclassified ${fixed} legacy item(s) — double-check they landed correctly` : 'No legacy items found', fixed?'success':undefined);
+}
+
 /* ============ catalog: CRUD ============ */
 async function addCatalogItem(){
   const pn = document.getElementById('cat_pn').value.trim();
@@ -933,7 +968,7 @@ async function bulkImportCatalog(){
     const desc = parts[3] || '';
     const priceRaw = parts[4];
     if(!pn || !product){ invalid.push(line); return; }
-    if(!['1a','1b','1','2','3','4'].includes(cat)) cat = '2';
+    if(!['1a','1b','1','2','3a','3b','3','4'].includes(cat)) cat = '2';
     const key = pn.toLowerCase();
     if(existingPns.has(key) || seenInBatch.has(key)){ skipped.push(pn); return; }
     seenInBatch.add(key);
@@ -1017,11 +1052,12 @@ function renderCatalog(){
       <td>${escapeHtml(c.pn)}</td>
       <td>
         <select onchange="updateCatalogField('${c.id}','cat',this.value)" style="min-width:150px;">
-          <option value="1a" ${c.cat==='1a'?'selected':''}>1. Vecow System</option>
-          <option value="1b" ${c.cat==='1b'?'selected':''}>1. Power Adaptor</option>
-          <option value="2" ${c.cat==='2'?'selected':''}>2. Other Items</option>
-          <option value="3" ${c.cat==='3'?'selected':''}>3. Memory & Storage</option>
-          <option value="4" ${c.cat==='4'?'selected':''}>4. Outsourcing</option>
+          <option value="1a" ${c.cat==='1a'?'selected':''}>Vecow System</option>
+          <option value="1b" ${c.cat==='1b'?'selected':''}>Power Adaptor</option>
+          <option value="2" ${c.cat==='2'?'selected':''}>Other Items</option>
+          <option value="3a" ${c.cat==='3a'?'selected':''}>RAM</option>
+          <option value="3b" ${c.cat==='3b'?'selected':''}>Storage</option>
+          <option value="4" ${c.cat==='4'?'selected':''}>Outsourcing</option>
         </select>
       </td>
       <td class="left-al"><input value="${escapeHtml(c.product||'')}" style="min-width:130px;" onchange="updateCatalogField('${c.id}','product',this.value)"></td>
@@ -1443,7 +1479,7 @@ function mergedRowSummary(row){
 
   let types, products;
   if(isSystemAdapterCombo){
-    types = '1. Vecow Systems & Power Adaptors';
+    types = 'Vecow System';
     const systemItems = row.items.filter(it=>it.cat==='1a'||it.cat==='1');
     products = (systemItems.length ? systemItems : row.items).map(it=>it.product).join(' + ');
   } else {
