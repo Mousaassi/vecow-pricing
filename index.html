@@ -13,12 +13,14 @@
 <style>
 :root{
   --navy:#0a1830; --navy-2:#122a52; --ink:#141b2c; --ink-soft:#697089; --line:#e6e4dc;
-  --paper:#f8f7f3; --card:#ffffff; --accent:#b08d3f; --accent-2:#d4b568;
+  --paper:#f8f7f3; --card:#ffffff; --input-bg:#ffffff; --accent:#b08d3f; --accent-2:#d4b568;
   --green:#3f8f5f; --purple:#7c5cbf; --orange:#c1791f;
   --danger:#c23b3b; --danger-bg:#fdeceb; --ok:#1c7a4f; --ok-bg:#e9f5ee;
   --radius:16px; --radius-sm:10px;
   --shadow:0 1px 2px rgba(10,24,48,.05), 0 2px 6px rgba(10,24,48,.05);
   --shadow-md:0 8px 24px rgba(10,24,48,.10), 0 2px 6px rgba(10,24,48,.06);
+  --highlight-bg:#fcf8ef; --highlight-border:#ecdfc0; --highlight-text:#8a6a24; --highlight-text-soft:#7a6a3f; --highlight-input-bg:#ffffff; --highlight-input-text:#2a2214;
+  color-scheme: light;
 }
 *{box-sizing:border-box;}
 body{
@@ -40,7 +42,7 @@ header.top{
   color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem;
   box-shadow:var(--shadow-md); border:1px solid rgba(176,141,63,.35); font-family:"Manrope",sans-serif;
 }
-.brand-name{font-family:"Manrope",sans-serif; font-size:1.4rem; font-weight:800; letter-spacing:-.01em; color:var(--navy);}
+.brand-name{font-family:"Manrope",sans-serif; font-size:1.4rem; font-weight:800; letter-spacing:-.01em; color:var(--ink);}
 .brand-name .light{font-weight:500; color:var(--ink-soft); font-family:"Inter",sans-serif;}
 .sync-status{display:flex; align-items:center; gap:7px; font-size:.78rem; color:var(--ink-soft); background:var(--card); border:1px solid var(--line); padding:6px 12px; border-radius:20px; box-shadow:var(--shadow);}
 .sync-dot{width:7px;height:7px;border-radius:50%; background:#98a2b3; flex:none;}
@@ -55,7 +57,7 @@ header.top{
 }
 .stat-card::before{content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--navy),var(--accent));}
 .stat-lbl{font-size:.72rem; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:.06em;}
-.stat-val{font-family:"Manrope",sans-serif; font-size:1.7rem; font-weight:800; margin-top:6px; letter-spacing:-.015em; color:var(--navy);}
+.stat-val{font-family:"Manrope",sans-serif; font-size:1.7rem; font-weight:800; margin-top:6px; letter-spacing:-.015em; color:var(--ink);}
 .stat-val.ok{color:var(--ok);} .stat-val.danger{color:var(--danger);}
 @media(max-width:900px){.stat-row{grid-template-columns:repeat(2,1fr);}}
 
@@ -66,16 +68,17 @@ header.top{
 
 /* cards */
 .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-bottom:20px; box-shadow:var(--shadow); transition:box-shadow .15s;}
-.card h2{margin:0 0 18px; font-size:1.05rem; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:9px; font-family:"Manrope",sans-serif;}
+.card h2{margin:0 0 18px; font-size:1.05rem; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:9px; font-family:"Manrope",sans-serif;}
 .card h2 .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block; box-shadow:0 0 0 4px rgba(176,141,63,.15);}
 
 label{display:block; font-size:.76rem; color:var(--ink-soft); font-weight:600; margin-bottom:5px;}
 input,select,textarea{
   width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:var(--radius-sm);
-  background:#fff; color:var(--ink); font-size:.87rem; font-family:inherit; transition:border-color .12s, box-shadow .12s;
+  background:var(--input-bg); color:var(--ink); font-size:.87rem; font-family:inherit; transition:border-color .12s, box-shadow .12s;
 }
 input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(176,141,63,.15);}
 input::placeholder{color:#9aa4b2;}
+select option{background:var(--input-bg); color:var(--ink);}
 
 .meta-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px;}
 
@@ -108,13 +111,21 @@ button:active{transform:translateY(1px);}
 
 .pn-preview{
   display:flex; align-items:center; gap:12px; margin-top:14px; padding:14px 16px;
-  background:var(--ok-bg); border:1px solid #cfe6d8; border-radius:var(--radius-sm);
+  background:var(--ok-bg); border:1px solid rgba(63,143,95,.4); border-radius:var(--radius-sm); flex-wrap:wrap;
 }
+.pn-preview-text{flex:1; min-width:160px;}
 .pn-preview-text strong{display:block; font-size:.92rem; color:var(--ink); font-family:"Manrope",sans-serif;}
 .pn-preview-text span{font-size:.78rem; color:var(--ink-soft);}
+.note-badge{
+  margin-left:auto; background:var(--highlight-bg); color:var(--highlight-text); border:1px solid var(--highlight-border);
+  padding:5px 12px; border-radius:20px; font-size:.72rem; font-weight:700; white-space:nowrap; cursor:help;
+}
 
-.new-device-fields{margin-top:14px; padding:16px; background:#fcf8ef; border:1px solid #ecdfc0; border-radius:var(--radius-sm);}
-.new-device-fields .hint-title{font-size:.8rem; font-weight:700; color:#8a6a24; margin-bottom:10px;}
+.new-device-fields{margin-top:14px; padding:16px; background:var(--highlight-bg); border:1px solid var(--highlight-border); border-radius:var(--radius-sm);}
+.new-device-fields .hint-title{font-size:.8rem; font-weight:700; color:var(--highlight-text); margin-bottom:10px;}
+.new-device-fields label{color:var(--highlight-text-soft);}
+.new-device-fields input,.new-device-fields select{background:var(--highlight-input-bg); color:var(--highlight-input-text); border-color:var(--highlight-border);}
+.new-device-fields .checkbox-line{color:var(--highlight-text-soft);}
 .checkbox-line{display:flex; align-items:center; gap:8px; margin-top:10px; font-size:.82rem; color:var(--ink-soft); font-weight:500;}
 .checkbox-line input{width:auto; accent-color:var(--navy);}
 
@@ -127,8 +138,8 @@ details.advanced summary:hover{color:var(--accent);}
 
 table{width:100%; border-collapse:collapse; font-size:.83rem;}
 th,td{padding:11px 10px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle;}
-th{background:linear-gradient(180deg,#fbfaf6,var(--paper)); color:var(--navy); font-weight:700; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:2px solid var(--line);}
-tbody tr:hover td{background:#fcfaf3;}
+th{background:var(--paper); color:var(--ink); font-weight:700; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:2px solid var(--line);}
+tbody tr:hover td{background:var(--paper);}
 td input,td select{padding:6px 8px; font-size:.8rem;}
 .table-scroll{overflow-x:auto; border-radius:var(--radius-sm); border:1px solid var(--line);}
 .table-scroll table{border:none;}
@@ -140,7 +151,7 @@ tr.low-margin td{background:var(--danger-bg);}
 .tab-btn{background:var(--paper); border:1px solid var(--line); color:var(--ink-soft); padding:8px 18px; border-radius:20px; font-size:.82rem; font-weight:700;}
 .tab-btn.active{background:linear-gradient(135deg,var(--navy),var(--navy-2)); color:#fff; border-color:var(--navy); box-shadow:0 2px 6px rgba(10,24,48,.2);}
 
-.merge-chip{background:#fff; border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size:.76rem; width:76px;}
+.merge-chip{background:var(--input-bg); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size:.76rem; width:76px;}
 
 footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-weight:700; margin-top:30px; letter-spacing:.04em; font-family:"Manrope",sans-serif;}
 
@@ -162,31 +173,59 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 /* dashboard */
 .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;}
 @media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+.live-strip{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:.84rem; color:var(--ink-soft);
+  background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:18px;
+}
+.live-strip .live-dot{width:8px; height:8px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 3px var(--ok-bg); flex:none;}
+.live-strip strong{color:var(--ink); font-weight:700;}
+.live-strip .sep{color:var(--line);}
 .bar-chart{display:flex; align-items:flex-end; gap:8px; height:160px; padding:10px 4px; overflow-x:auto;}
 .bar-chart .bar-col{display:flex; flex-direction:column; align-items:center; gap:6px; min-width:38px; flex:none;}
 .bar-chart .bar{width:26px; border-radius:6px 6px 0 0; background:linear-gradient(180deg,var(--accent),var(--navy)); transition:height .3s;}
 .bar-chart .bar-lbl{font-size:.65rem; color:var(--ink-soft); white-space:nowrap; max-width:50px; overflow:hidden; text-overflow:ellipsis;}
 .q-status{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:.7rem; font-weight:700;}
 .q-status.current{background:var(--ok-bg); color:var(--ok);}
-.q-status.saved{background:#eef1f6; color:var(--ink-soft);}
+.q-status.saved{background:var(--paper); color:var(--ink-soft); border:1px solid var(--line);}
 
 /* color themes */
 html[data-theme="dark"]{
   --navy:#0a1830; --navy-2:#16294a; --ink:#e9edf6; --ink-soft:#9aa5bb; --line:#2a3550;
-  --paper:#0d1526; --card:#141d33; --accent:#d4b568; --accent-2:#e8cf8f;
+  --paper:#0d1526; --card:#141d33; --input-bg:#1a2540; --accent:#d4b568; --accent-2:#e8cf8f;
   --ok-bg:#0f2c1f; --danger-bg:#331414;
+  --highlight-bg:#2a2410; --highlight-border:#4a3f1c; --highlight-text:#e8cf8f; --highlight-text-soft:#d4b568; --highlight-input-bg:#1a2540; --highlight-input-text:#e9edf6;
+  color-scheme: dark;
 }
+html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator{ filter: invert(0.9) brightness(1.5); }
 html[data-theme="ocean"]{
   --navy:#0b2a4a; --navy-2:#123a63; --accent:#1d9bd8; --accent-2:#5fc2ef;
+  --paper:#eef6fb; --card:#ffffff; --input-bg:#ffffff; --line:#d7e7f1;
 }
 html[data-theme="emerald"]{
   --navy:#0d2f22; --navy-2:#154a34; --accent:#c9a227; --accent-2:#e0bf55;
+  --paper:#eef7f1; --card:#ffffff; --input-bg:#ffffff; --line:#d8e9de;
 }
 html[data-theme="burgundy"]{
   --navy:#3a0d1c; --navy-2:#57132a; --accent:#c9974a; --accent-2:#e0b878;
+  --paper:#faf0f0; --card:#ffffff; --input-bg:#ffffff; --line:#eed9d9;
 }
-.theme-picker{display:flex; align-items:center; gap:6px;}
-.theme-picker select{width:auto; padding:6px 10px; font-size:.8rem; border-radius:20px;}
+
+/* theme picker — round two-tone swatches */
+.theme-picker{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); padding:7px 9px; border-radius:20px; box-shadow:var(--shadow);}
+.theme-chip{
+  display:block; padding:0; margin:0; width:30px; height:30px; border-radius:50%;
+  border:2px solid transparent; cursor:pointer; background-clip:padding-box;
+  box-shadow:0 1px 2px rgba(10,24,48,.18), inset 0 0 0 1px rgba(255,255,255,.25), inset 0 0 3px rgba(0,0,0,.15);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.theme-chip:hover{transform:translateY(-2px) scale(1.07);}
+.theme-chip.active{border-color:var(--card); box-shadow:0 0 0 2px var(--ink), 0 2px 5px rgba(10,24,48,.25);}
+
+/* confirm / alert modal */
+.modal-overlay{position:fixed; inset:0; background:rgba(10,24,48,.55); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px;}
+.modal-box{background:var(--card); color:var(--ink); border-radius:var(--radius); padding:26px; max-width:400px; width:100%; box-shadow:var(--shadow-md); animation:card-in .18s ease-out;}
+.modal-msg{font-size:.92rem; color:var(--ink); margin-bottom:22px; line-height:1.55; white-space:pre-line;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px;}
 </style>
 </head>
 <body>
@@ -197,19 +236,16 @@ html[data-theme="burgundy"]{
       <div class="brand-mark">V</div>
       <div class="brand-name">Vecow <span class="light">Tech</span></div>
     </div>
-    <div class="theme-picker">
-      <label for="themeSelect" style="margin:0; font-size:.78rem;">🎨</label>
-      <select id="themeSelect" onchange="applyTheme(this.value)">
-        <option value="gold">Navy & Gold</option>
-        <option value="ocean">Ocean Blue</option>
-        <option value="emerald">Emerald</option>
-        <option value="burgundy">Burgundy</option>
-        <option value="dark">Dark Mode</option>
-      </select>
+    <div class="theme-picker" id="themePicker">
+      <button class="theme-chip" data-swatch="gold" title="Navy & Gold" style="background:linear-gradient(135deg,#0a1830 50%,#b08d3f 50%);" onclick="applyTheme('gold')"></button>
+      <button class="theme-chip" data-swatch="ocean" title="Ocean Blue" style="background:linear-gradient(135deg,#0b2a4a 50%,#1d9bd8 50%);" onclick="applyTheme('ocean')"></button>
+      <button class="theme-chip" data-swatch="emerald" title="Emerald" style="background:linear-gradient(135deg,#0d2f22 50%,#c9a227 50%);" onclick="applyTheme('emerald')"></button>
+      <button class="theme-chip" data-swatch="burgundy" title="Burgundy" style="background:linear-gradient(135deg,#3a0d1c 50%,#c9974a 50%);" onclick="applyTheme('burgundy')"></button>
+      <button class="theme-chip" data-swatch="dark" title="Dark Mode" style="background:linear-gradient(135deg,#0d1526 50%,#d4b568 50%);" onclick="applyTheme('dark')"></button>
     </div>
   </header>
 
-  <div class="stat-row" id="statRow"></div>
+  <div class="stat-row" id="statRow" style="display:none;"></div>
 
   <div class="maintabs">
     <button class="maintab active" id="mtDashboard" onclick="setMainTab('dashboard')">Dashboard</button>
@@ -221,11 +257,8 @@ html[data-theme="burgundy"]{
   <!-- ===================== DASHBOARD TAB ===================== -->
   <div id="tabDashboard">
     <div class="card">
-      <h2><span class="dot"></span>Current quotation (live, unsaved)</h2>
-      <div class="kpi-row" id="liveKpiRow"></div>
-    </div>
-    <div class="card">
-      <h2><span class="dot"></span>Business overview — saved quotations</h2>
+      <h2><span class="dot"></span>Business overview</h2>
+      <div class="live-strip" id="liveStrip"></div>
       <div class="kpi-row" id="kpiRow"></div>
       <div class="hint" style="margin-bottom:8px;">Client value per saved quotation (most recent first)</div>
       <div class="bar-chart" id="dashboardChart"></div>
@@ -275,6 +308,7 @@ html[data-theme="burgundy"]{
       <div id="pnPreview" class="pn-preview" style="display:none;">
         <span class="cat-pill" id="pnPreviewCat"></span>
         <div class="pn-preview-text"><strong id="pnPreviewProduct"></strong><span id="pnPreviewDesc"></span></div>
+        <span id="pnPreviewNoteBadge" class="note-badge" style="display:none;">📝 Has a note</span>
       </div>
 
       <div id="newDeviceFields" class="new-device-fields" style="display:none;">
@@ -301,7 +335,7 @@ html[data-theme="burgundy"]{
 
       <div id="addonsBox" style="display:none; margin-top:14px; padding:14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);">
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-          <div class="hint-title" id="addonsBoxTitle" style="font-size:.8rem; font-weight:700; color:var(--navy);">Compatible add-ons</div>
+          <div class="hint-title" id="addonsBoxTitle" style="font-size:.8rem; font-weight:700; color:var(--ink);">Compatible add-ons</div>
           <label class="checkbox-line" style="margin-top:0;"><input type="checkbox" id="showAllAddonsChk" onchange="renderAddonCheckboxes()"> Show all add-ons</label>
         </div>
         <div id="addonsCheckList" style="display:flex; flex-direction:column; gap:6px;"></div>
@@ -396,6 +430,7 @@ html[data-theme="burgundy"]{
         <div class="f3"><label>Product</label><input id="cat_product" placeholder="e.g. ECX-3200-PEG"></div>
         <div class="f4"><label>Description / Specs</label><input id="cat_desc" placeholder="Full description / specifications"></div>
         <div class="f2"><label>Default price (USD, optional)</label><input id="cat_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="f12"><label>Note (optional)</label><textarea id="cat_note" rows="2" placeholder="e.g. Supported quantities: Refer to Compatibility List. / Cannot pre-install / Custom hold-on bar required for RCX-3000"></textarea></div>
         <div class="f12" style="display:flex; justify-content:flex-end;"><button class="btn-primary" onclick="addCatalogItem()">+ Add to catalog</button></div>
       </div>
     </div>
@@ -405,7 +440,7 @@ html[data-theme="burgundy"]{
       <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()">
       <div class="table-scroll" style="margin-top:12px;">
         <table id="catalogTable">
-          <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th></th></tr></thead>
+          <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th>Note</th><th></th></tr></thead>
           <tbody id="catalogBody"></tbody>
         </table>
         <div id="catalogEmptyState" class="empty-state">Catalog is empty — add your first device above.</div>
@@ -448,6 +483,15 @@ html[data-theme="burgundy"]{
   <footer class="foot">Vecow Tech</footer>
 </div>
 <div id="toastHost"></div>
+<div id="confirmModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div id="confirmModalMsg" class="modal-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-outline" id="confirmModalCancel">Cancel</button>
+      <button class="btn-primary" id="confirmModalOk">Yes, continue</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ============ Supabase connection ============ */
@@ -490,10 +534,40 @@ function setSyncStatus(mode){
   // sync indicator UI removed — kept as a no-op so callers don't need to change.
 }
 
+function appConfirm(message, opts){
+  opts = opts || {};
+  return new Promise(resolve=>{
+    const overlay = document.getElementById('confirmModal');
+    document.getElementById('confirmModalMsg').textContent = message;
+    const okBtn = document.getElementById('confirmModalOk');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+    cancelBtn.style.display = opts.alertOnly ? 'none' : '';
+    okBtn.textContent = opts.okLabel || (opts.alertOnly ? 'OK' : 'Yes, continue');
+    overlay.style.display = 'flex';
+    function cleanup(result){
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlay);
+      resolve(result);
+    }
+    function onOk(){ cleanup(true); }
+    function onCancel(){ cleanup(false); }
+    function onOverlay(e){ if(e.target===overlay && !opts.alertOnly) cleanup(false); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlay);
+  });
+}
+function appAlert(message){
+  return appConfirm(message, {alertOnly:true, okLabel:'OK'});
+}
+
 function applyTheme(name){
   document.documentElement.setAttribute('data-theme', name);
-  const sel = document.getElementById('themeSelect');
-  if(sel) sel.value = name;
+  document.querySelectorAll('.theme-chip').forEach(btn=>{
+    btn.classList.toggle('active', btn.getAttribute('data-swatch')===name);
+  });
   try{ localStorage.setItem('vecow_theme', name); }catch(e){}
 }
 
@@ -515,6 +589,7 @@ function setMainTab(tab){
   document.getElementById('tabQuotation').style.display = tab==='quotation' ? '' : 'none';
   document.getElementById('tabCatalog').style.display = tab==='catalog' ? '' : 'none';
   document.getElementById('tabAddons').style.display = tab==='addons' ? '' : 'none';
+  document.getElementById('statRow').style.display = tab==='quotation' ? '' : 'none';
   if(tab==='dashboard') renderDashboard();
 }
 
@@ -528,7 +603,7 @@ function mapRowToItem(row){
   };
 }
 function mapRowToCatalog(row){
-  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, createdAt: row.created_at };
+  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, note: row.note||'', createdAt: row.created_at };
 }
 function mapRowToAddon(row){
   return { id: row.id, pn: row.pn || '', name: row.name, desc: row.description || '', price: row.price, compatibleSeries: row.compatible_series || '', createdAt: row.created_at };
@@ -751,15 +826,21 @@ function catClass(cat){
 /* ============ PN lookup / quick add flow ============ */
 function populatePnDatalist(){
   const dl = document.getElementById('pnDatalist');
-  dl.innerHTML = catalog.map(c=>`<option value="${escapeHtml(c.pn)}">${escapeHtml(c.product||'')}</option>`).join('');
+  dl.innerHTML = catalog.map(c=>{
+    const flag = (c.note && c.note.trim()) ? '📝 ' : '';
+    return `<option value="${escapeHtml(c.pn)}">${flag}${escapeHtml(c.product||'')}</option>`;
+  }).join('');
 }
+let pendingCatalogNote = '';
 function updatePnState(){
   const pnVal = document.getElementById('in_pn').value.trim();
   const preview = document.getElementById('pnPreview');
   const newFields = document.getElementById('newDeviceFields');
+  const noteBadge = document.getElementById('pnPreviewNoteBadge');
   if(!pnVal){
     preview.style.display='none'; newFields.style.display='none';
     document.getElementById('addonsBox').style.display='none';
+    pendingCatalogNote = '';
     return;
   }
   const match = catalog.find(c=>
@@ -775,15 +856,25 @@ function updatePnState(){
     if((match.price!=null && match.price!=='') && !document.getElementById('in_price').value){
       document.getElementById('in_price').value = match.price;
     }
+    pendingCatalogNote = match.note || '';
     document.getElementById('pnPreviewCat').className = 'cat-pill ' + catClass(matchCat);
     document.getElementById('pnPreviewCat').textContent = catLabel(matchCat);
     document.getElementById('pnPreviewProduct').textContent = match.product || '';
     document.getElementById('pnPreviewDesc').textContent = match.desc || '';
+    if(pendingCatalogNote){
+      noteBadge.style.display = 'inline-block';
+      noteBadge.title = pendingCatalogNote;
+    } else {
+      noteBadge.style.display = 'none';
+      noteBadge.title = '';
+    }
     preview.style.display = 'flex';
     newFields.style.display = 'none';
     document.getElementById('intelWrap').style.display = (matchCat==='2') ? '' : 'none';
     updateTierVisibility();
   } else {
+    pendingCatalogNote = '';
+    noteBadge.style.display = 'none';
     preview.style.display = 'none';
     newFields.style.display = 'block';
   }
@@ -843,8 +934,8 @@ async function addAddonItem(){
   const desc = document.getElementById('ad_desc').value.trim();
   const priceRaw = document.getElementById('ad_price').value;
   const series = document.getElementById('ad_series').value.trim();
-  if(!name){ alert('Please enter the add-on name'); return; }
-  if(!priceRaw || Number(priceRaw)<0){ alert('Please enter the price'); return; }
+  if(!name){ await appAlert('Please enter the add-on name'); return; }
+  if(!priceRaw || Number(priceRaw)<0){ await appAlert('Please enter the price'); return; }
 
   const data = { pn, name, desc, price: Number(priceRaw), compatibleSeries: series, createdAt: Date.now() };
 
@@ -853,7 +944,7 @@ async function addAddonItem(){
       pn: data.pn, name: data.name, description: data.desc, price: data.price,
       compatible_series: data.compatibleSeries, created_at: data.createdAt
     });
-    if(error){ console.error(error); alert('Could not save to the cloud add-ons list.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
+    if(error){ console.error(error); await appAlert('Could not save to the cloud add-ons list.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
   } else {
     data.id = 'local_addon_' + (localAddonIdSeq++);
     addons.push(data);
@@ -863,7 +954,7 @@ async function addAddonItem(){
   ['ad_pn','ad_name','ad_desc','ad_price','ad_series'].forEach(id=>document.getElementById(id).value='');
 }
 async function removeAddon(id){
-  if(!confirm('Remove this add-on?')) return;
+  if(!(await appConfirm('Remove this add-on?'))) return;
   if(usingCloudAddons){
     const { error } = await sb.from('addons').delete().eq('id', id);
     if(error) console.error(error);
@@ -921,28 +1012,29 @@ function renderAddons(){
 async function addCatalogItem(){
   const pn = document.getElementById('cat_pn').value.trim();
   const product = document.getElementById('cat_product').value.trim();
-  if(!pn){ alert('Please enter a PN'); return; }
-  if(!product){ alert('Please enter the product name'); return; }
+  if(!pn){ await appAlert('Please enter a PN'); return; }
+  if(!product){ await appAlert('Please enter the product name'); return; }
   if(catalog.some(c=>(c.pn||'').toLowerCase()===pn.toLowerCase())){
-    alert('This PN already exists in the catalog. Edit it directly in the table below instead.');
+    await appAlert('This PN already exists in the catalog. Edit it directly in the table below instead.');
     return;
   }
   const priceRaw = document.getElementById('cat_price').value;
   const data = {
     pn: pn, cat: document.getElementById('cat_cat').value, product: product,
     desc: document.getElementById('cat_desc').value, price: priceRaw ? Number(priceRaw) : null,
+    note: document.getElementById('cat_note').value.trim(),
     createdAt: Date.now()
   };
   if(usingCloud){
     const { error } = await sb.from('catalog').insert({
-      pn: data.pn, cat: data.cat, product: data.product, description: data.desc, price: data.price, created_at: data.createdAt
+      pn: data.pn, cat: data.cat, product: data.product, description: data.desc, price: data.price, note: data.note, created_at: data.createdAt
     });
     if(error){
       console.error(error);
       if(error.code==='23505'){
-        alert('This PN already exists in the cloud catalog (added from another tab/session). Refresh the page and edit it in the table below instead of re-adding it.');
+        await appAlert('This PN already exists in the cloud catalog (added from another tab/session). Refresh the page and edit it in the table below instead of re-adding it.');
       } else {
-        alert('Could not save to the cloud catalog.\n\n' + (error.message||error.details||JSON.stringify(error)));
+        await appAlert('Could not save to the cloud catalog.\n\n' + (error.message||error.details||JSON.stringify(error)));
       }
       return;
     }
@@ -952,11 +1044,11 @@ async function addCatalogItem(){
     saveLocalCatalog();
     renderCatalog();
   }
-  ['cat_pn','cat_product','cat_desc','cat_price'].forEach(id=>document.getElementById(id).value='');
+  ['cat_pn','cat_product','cat_desc','cat_price','cat_note'].forEach(id=>document.getElementById(id).value='');
 }
 
 async function removeCatalogItem(id){
-  if(!confirm('Remove this device from the catalog?')) return;
+  if(!(await appConfirm('Remove this device from the catalog?'))) return;
   if(usingCloud){
     const { error } = await sb.from('catalog').delete().eq('id', id);
     if(error) console.error(error);
@@ -966,7 +1058,7 @@ async function removeCatalogItem(id){
     renderCatalog();
   }
 }
-const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price' };
+const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price', note:'note' };
 async function updateCatalogField(id, field, value){
   if(usingCloud){
     const col = catFieldToColumn[field];
@@ -988,7 +1080,8 @@ function renderCatalog(){
   const filtered = term ? catalog.filter(c=>
     (c.pn||'').toLowerCase().includes(term) ||
     (c.product||'').toLowerCase().includes(term) ||
-    (c.desc||'').toLowerCase().includes(term)
+    (c.desc||'').toLowerCase().includes(term) ||
+    (c.note||'').toLowerCase().includes(term)
   ) : catalog;
 
   body.innerHTML = '';
@@ -998,8 +1091,9 @@ function renderCatalog(){
 
   filtered.forEach(c=>{
     const tr = document.createElement('tr');
+    const hasNote = c.note && c.note.trim();
     tr.innerHTML = `
-      <td>${escapeHtml(c.pn)}</td>
+      <td>${escapeHtml(c.pn)}${hasNote ? ` <span title="${escapeHtml(c.note)}" style="cursor:help;">📝</span>` : ''}</td>
       <td>
         <select onchange="updateCatalogField('${c.id}','cat',this.value)" style="min-width:150px;">
           <option value="1a" ${c.cat==='1a'?'selected':''}>Vecow System</option>
@@ -1015,6 +1109,7 @@ function renderCatalog(){
       <td class="left-al"><input value="${escapeHtml(c.product||'')}" style="min-width:130px;" onchange="updateCatalogField('${c.id}','product',this.value)"></td>
       <td class="left-al"><input value="${escapeHtml(c.desc||'')}" style="min-width:240px;" onchange="updateCatalogField('${c.id}','desc',this.value)"></td>
       <td class="num"><input type="number" min="0" step="0.01" value="${c.price!=null?c.price:''}" style="width:95px;" onchange="updateCatalogField('${c.id}','price',this.value?Number(this.value):null)"></td>
+      <td class="left-al"><textarea rows="2" style="min-width:180px; font-size:.76rem;" placeholder="Optional note" onchange="updateCatalogField('${c.id}','note',this.value)">${escapeHtml(c.note||'')}</textarea></td>
       <td><button class="btn-danger" onclick="removeCatalogItem('${c.id}')">Delete</button></td>
     `;
     body.appendChild(tr);
@@ -1026,14 +1121,14 @@ function toggleSelectAllItems(masterChk){
 }
 async function mergeSelectedItems(){
   const checked = Array.from(document.querySelectorAll('.item-select-chk:checked')).map(el=>el.value);
-  if(checked.length < 2){ alert('Tick at least two items to merge.'); return; }
+  if(checked.length < 2){ await appAlert('Tick at least two items to merge.'); return; }
   const groupId = 'grp_' + Date.now();
   for(const id of checked){ await updateField(id, 'mergeGroup', groupId); }
   document.getElementById('selectAllChk').checked = false;
 }
 async function unmergeSelectedItems(){
   const checked = Array.from(document.querySelectorAll('.item-select-chk:checked')).map(el=>el.value);
-  if(checked.length === 0){ alert('Tick the item(s) you want to un-merge.'); return; }
+  if(checked.length === 0){ await appAlert('Tick the item(s) you want to un-merge.'); return; }
   for(const id of checked){ await updateField(id, 'mergeGroup', ''); }
   document.getElementById('selectAllChk').checked = false;
 }
@@ -1089,7 +1184,7 @@ async function saveQuotation(){
 }
 
 async function newQuotation(){
-  if(items.length>0 && !confirm('Start a new quotation? Current items will be cleared (save first if you want to keep them).')) return;
+  if(items.length>0 && !(await appConfirm('Start a new quotation? Current items will be cleared (save first if you want to keep them).'))) return;
   if(usingCloud){
     const { error } = await sb.from('items').delete().gte('created_at', 0);
     if(error) console.error(error);
@@ -1134,7 +1229,7 @@ async function restoreItemsFromSnapshot(snapshotItems){
 async function loadQuotation(id){
   const q = savedQuotations.find(x=>x.id===id);
   if(!q) return;
-  if(items.length>0 && !confirm('Loading this quotation will replace the current live items. Continue?')) return;
+  if(items.length>0 && !(await appConfirm('Loading this quotation will replace the current live items. Continue?'))) return;
   const ok = await restoreItemsFromSnapshot(q.items||[]);
   if(!ok) return;
   document.getElementById('qNo').value = q.qNo||'';
@@ -1150,7 +1245,7 @@ async function loadQuotation(id){
 async function duplicateQuotation(id){
   const q = savedQuotations.find(x=>x.id===id);
   if(!q) return;
-  if(items.length>0 && !confirm('Loading a duplicate will replace the current live items. Continue?')) return;
+  if(items.length>0 && !(await appConfirm('Loading a duplicate will replace the current live items. Continue?'))) return;
   const ok = await restoreItemsFromSnapshot(q.items||[]);
   if(!ok) return;
   document.getElementById('qNo').value = (q.qNo||'') + ' (copy)';
@@ -1164,7 +1259,7 @@ async function duplicateQuotation(id){
 }
 
 async function deleteQuotation(id){
-  if(!confirm('Delete this saved quotation? This cannot be undone.')) return;
+  if(!(await appConfirm('Delete this saved quotation? This cannot be undone.'))) return;
   if(usingCloudQuotations){
     const { error } = await sb.from('quotations').delete().eq('id', id);
     if(error){ console.error(error); toast('Could not delete', 'error'); return; }
@@ -1190,14 +1285,15 @@ function renderDashboard(){
   const liveVecow = items.reduce((s,it)=>{ const eff=getEffective(it); return s+eff.vecow*it.qty; },0);
   const liveClient = items.reduce((s,it)=>{ const eff=getEffective(it); return s+eff.client*it.qty; },0);
   const livePct = liveClient ? ((liveClient-liveVecow)/liveClient*100) : 0;
-  const liveEl = document.getElementById('liveKpiRow');
+  const liveEl = document.getElementById('liveStrip');
   if(liveEl){
-    liveEl.innerHTML = `
-      <div class="stat-card"><div class="stat-lbl">Items right now</div><div class="stat-val">${items.length}</div></div>
-      <div class="stat-card"><div class="stat-lbl">Vecow Cost</div><div class="stat-val">$${liveVecow.toFixed(2)}</div></div>
-      <div class="stat-card"><div class="stat-lbl">Client Price</div><div class="stat-val">$${liveClient.toFixed(2)}</div></div>
-      <div class="stat-card"><div class="stat-lbl">Margin</div><div class="stat-val ${livePct<20?'danger':'ok'}">${livePct.toFixed(1)}%</div></div>
-    `;
+    liveEl.innerHTML = items.length ? `
+      <span class="live-dot"></span>
+      <span>Live quotation (unsaved):</span>
+      <strong>${items.length}</strong> item${items.length===1?'':'s'}
+      <span class="sep">·</span> <strong>$${liveClient.toFixed(2)}</strong> client value
+      <span class="sep">·</span> <strong class="${livePct<20?'danger':'ok'}" style="color:${livePct<20?'var(--danger)':'var(--ok)'}">${livePct.toFixed(1)}%</strong> margin
+    ` : `<span class="live-dot" style="background:var(--ink-soft); box-shadow:none;"></span><span>No items in the live quotation right now</span>`;
   }
 
   const totalQ = savedQuotations.length;
@@ -1253,9 +1349,10 @@ async function addItem(){
   const price = document.getElementById('in_price').value;
   const product = document.getElementById('in_product').value;
   const pn = document.getElementById('in_pn').value.trim() || 'N/A';
-  if(!price || Number(price)<=0){ alert('Please enter the current price'); return; }
-  if(!product){ alert('This PN needs a product name — check "New PN" details above'); return; }
+  if(!price || Number(price)<=0){ await appAlert('Please enter the current price'); return; }
+  if(!product){ await appAlert('This PN needs a product name — check "New PN" details above'); return; }
 
+  const noteFromCatalog = pendingCatalogNote || '';
   const base = {
     pn: pn, cat: cat,
     isIntel: cat==='2' && document.getElementById('in_intel').value==='1',
@@ -1266,7 +1363,7 @@ async function addItem(){
     qty: Number(document.getElementById('in_qty').value)||1,
     price: Number(price),
     vecowManual: null, clientManual: null,
-    note: '', noteCustom: '', noteDate: '', mergeGroup: '',
+    note: noteFromCatalog ? 'compat' : '', noteCustom: noteFromCatalog, noteDate: '', mergeGroup: '',
     createdAt: Date.now()
   };
 
@@ -1274,7 +1371,7 @@ async function addItem(){
     const row = {
       pn: base.pn, cat: base.cat, is_intel: base.isIntel, intel_div: base.intelDiv, tier: base.tier,
       product: base.product, description: base.desc, qty: base.qty, price: base.price,
-      vecow_manual: null, client_manual: null, note:'', note_custom:'', note_date:'', merge_group:'',
+      vecow_manual: null, client_manual: null, note: base.note, note_custom: base.noteCustom, note_date:'', merge_group:'',
       created_at: base.createdAt
     };
     const { error } = await sb.from('items').insert(row);
@@ -1285,6 +1382,7 @@ async function addItem(){
     saveLocalItems();
   }
 
+  pendingCatalogNote = '';
   await maybeSaveNewPnToCatalog(base.pn, base.cat, base.product, base.desc, base.price);
 
   // selected compatible/general add-ons -> each becomes its own line item with the real add-on PN
@@ -1361,7 +1459,7 @@ async function updateField(id, field, value){
   }
 }
 async function clearAll(){
-  if(!confirm('Clear all items?')) return;
+  if(!(await appConfirm('Clear all items?'))) return;
   if(usingCloud){
     const { error } = await sb.from('items').delete().gte('created_at', 0);
     if(error) console.error(error);
@@ -1537,7 +1635,7 @@ function renderPreviews(){
 
 
 async function exportExcel(){
-  if(items.length===0){ alert('Add items first'); return; }
+  if(items.length===0){ await appAlert('Add items first'); return; }
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Quotation');
   const qNo = document.getElementById('qNo').value || '1';
