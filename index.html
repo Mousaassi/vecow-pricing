@@ -14,7 +14,7 @@
 :root{
   --navy:#0a1830; --navy-2:#122a52; --ink:#141b2c; --ink-soft:#697089; --line:#e6e4dc;
   --paper:#f8f7f3; --card:#ffffff; --input-bg:#ffffff; --accent:#b08d3f; --accent-2:#d4b568;
-  --green:#3f8f5f; --purple:#7c5cbf; --orange:#c1791f;
+  --green:#3f8f5f; --purple:#7c5cbf; --orange:#c1791f; --brown:#8a5a2b; --steel:#3a6fa0;
   --danger:#c23b3b; --danger-bg:#fdeceb; --ok:#1c7a4f; --ok-bg:#e9f5ee;
   --radius:16px; --radius-sm:10px;
   --shadow:0 1px 2px rgba(10,24,48,.05), 0 2px 6px rgba(10,24,48,.05);
@@ -90,7 +90,7 @@ select option{background:var(--input-bg); color:var(--ink);}
 .cat-pill{display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px; font-size:.72rem; font-weight:700; color:#fff; white-space:nowrap; letter-spacing:.01em;}
 .cat-1a{background:var(--navy-2);} .cat-1b{background:#4a6fa5;}
 .cat-2{background:var(--green);} .cat-3a{background:var(--purple);} .cat-3b{background:#9d6fd1;} .cat-4{background:var(--orange);}
-.cat-gc{background:#2f6f6f;} .cat-acc{background:#6b7280;}
+.cat-gc{background:#2f6f6f;} .cat-acc{background:#6b7280;} .cat-cpu{background:var(--brown);} .cat-mod{background:var(--steel);}
 
 button{cursor:pointer; border:none; border-radius:var(--radius-sm); padding:11px 20px; font-size:.87rem; font-weight:700; font-family:inherit; transition:filter .15s, transform .05s, box-shadow .15s;}
 button:active{transform:translateY(1px);}
@@ -146,12 +146,22 @@ td input,td select{padding:6px 8px; font-size:.8rem;}
 tr.low-margin td{background:var(--danger-bg);}
 .tag-note{font-size:.72rem; color:var(--ink-soft); white-space:pre-line; text-align:left;}
 .num{font-variant-numeric:tabular-nums;} .left-al{text-align:left;}
+.trunc{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:help;}
+
+.subtable-label{display:flex; align-items:center; gap:7px; font-size:.74rem; font-weight:800; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; padding:12px 10px 8px; background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+.subtable-label .dot2{width:6px; height:6px; border-radius:50%; background:var(--purple); flex:none;}
+
+/* items table — compact, fixed layout so it fits without horizontal scroll */
+#itemsTable{table-layout:fixed; font-size:.78rem;}
+#itemsTable th{padding:8px 4px; font-size:.62rem;}
+#itemsTable td{padding:6px 4px;}
+#itemsTable td input, #itemsTable td select, #itemsTable td textarea{padding:5px 6px; font-size:.76rem;}
 
 .section-tabs{display:flex; gap:8px; margin-bottom:16px;}
 .tab-btn{background:var(--paper); border:1px solid var(--line); color:var(--ink-soft); padding:8px 18px; border-radius:20px; font-size:.82rem; font-weight:700;}
 .tab-btn.active{background:linear-gradient(135deg,var(--navy),var(--navy-2)); color:#fff; border-color:var(--navy); box-shadow:0 2px 6px rgba(10,24,48,.2);}
 
-.merge-chip{background:var(--input-bg); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size:.76rem; width:76px;}
+.merge-chip{background:var(--input-bg); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size:.76rem; width:100%;}
 
 footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-weight:700; margin-top:30px; letter-spacing:.04em; font-family:"Manrope",sans-serif;}
 
@@ -319,9 +329,11 @@ html[data-theme="burgundy"]{
             <select id="in_cat">
               <option value="1a">Vecow System</option>
               <option value="1b">Power Adaptor</option>
-              <option value="2">Other Items (CPU, Modules, Cards)</option>
+              <option value="cpu">CPU</option>
+              <option value="mod">Module (4G/5G/WiFi)</option>
               <option value="gc">Graphics Card</option>
               <option value="acc">Accessory</option>
+              <option value="2">Other Items</option>
               <option value="3a">RAM</option>
               <option value="3b">Storage</option>
               <option value="4">Outsourcing</option>
@@ -329,8 +341,31 @@ html[data-theme="burgundy"]{
           </div>
           <div class="f4"><label>Product</label><input id="in_product" placeholder="e.g. ECX-3200-PEG"></div>
           <div class="f6"><label>Description / Specs</label><input id="in_desc" placeholder="Full description / specifications"></div>
+          <div class="f4" id="modTypeWrap" style="display:none;">
+            <label>Module type</label>
+            <select id="in_modType" onchange="if(this.value) document.getElementById('in_product').value=this.value;">
+              <option value="">Choose…</option>
+              <option value="4G Module">4G Module</option>
+              <option value="5G Module">5G Module</option>
+              <option value="5G RedCap Module">5G RedCap Module</option>
+              <option value="WiFi Module">WiFi Module</option>
+            </select>
+          </div>
+          <div class="f12" id="inCompatWrap" style="display:none;">
+            <label>Compatible device series (optional)</label>
+            <input id="in_compat" placeholder="e.g. ECX-3000, ECX-3200 — comma separated">
+            <div class="hint">Leave empty to make this accessory show up for every device (universal). Use the series prefix as it appears in the Product field — e.g. "ECX-3000" will match ECX-3000, ECX-3000V, ECX-3000-PEG, ECX-3000-PoE…</div>
+          </div>
         </div>
         <label class="checkbox-line"><input type="checkbox" id="saveToCatalogChk" checked> Save this device to the catalog for next time</label>
+      </div>
+
+      <div id="accessoriesBox" style="display:none; margin-top:14px; padding:14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <div class="hint-title" id="accessoriesBoxTitle" style="font-size:.8rem; font-weight:700; color:var(--ink);">Compatible accessories</div>
+          <label class="checkbox-line" style="margin-top:0;"><input type="checkbox" id="showAllAccessoriesChk" onchange="renderCompatibleAccessories()"> Show all accessories</label>
+        </div>
+        <div id="accessoriesCheckList" style="display:flex; flex-direction:column; gap:6px;"></div>
       </div>
 
       <div id="addonsBox" style="display:none; margin-top:14px; padding:14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);">
@@ -342,12 +377,8 @@ html[data-theme="burgundy"]{
       </div>
 
       <details class="advanced" id="advancedDetails">
-        <summary>Advanced options — Intel CPU divisor, quantity tier &amp; one-off add-on</summary>
+        <summary>Advanced options — quantity tier, CPU divisor &amp; one-off add-on</summary>
         <div class="form-grid" style="margin-top:12px;">
-          <div class="f3" id="intelWrap" style="display:none;">
-            <label>Intel CPU?</label>
-            <select id="in_intel"><option value="0">No</option><option value="1">Yes — no fixed discount</option></select>
-          </div>
           <div class="f3" id="tierWrap">
             <label>Quantity tier</label>
             <select id="in_tier">
@@ -357,9 +388,9 @@ html[data-theme="burgundy"]{
               <option value="0.8">100 PCS+ (÷0.8)</option>
             </select>
           </div>
-          <div class="f3" id="intelDivWrap" style="display:none;">
-            <label>Intel CPU divisor</label>
-            <select id="in_intelDiv"><option value="0.9">÷0.9</option><option value="0.8">÷0.8</option></select>
+          <div class="f3" id="cpuDivWrap" style="display:none;">
+            <label>CPU divisor</label>
+            <select id="in_cpuDiv"><option value="0.9">÷0.9</option><option value="0.8">÷0.8</option></select>
           </div>
         </div>
         <div class="form-grid" style="margin-top:12px;">
@@ -376,11 +407,17 @@ html[data-theme="burgundy"]{
       <h2><span class="dot"></span>Items in this quotation</h2>
       <div class="table-scroll">
         <table id="itemsTable">
+          <colgroup>
+            <col style="width:24px"><col style="width:22px"><col style="width:78px"><col style="width:92px">
+            <col style="width:100px"><col style="width:170px"><col style="width:36px"><col style="width:54px">
+            <col style="width:54px"><col style="width:54px"><col style="width:46px"><col style="width:110px">
+            <col style="width:52px"><col style="width:46px">
+          </colgroup>
           <thead><tr>
             <th><input type="checkbox" id="selectAllChk" onchange="toggleSelectAllItems(this)"></th>
             <th>#</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th>
-            <th>Original price</th><th>Vecow U/P</th><th>Client U/P</th><th>Profit %</th>
-            <th>Client note</th><th>Merge group</th><th></th>
+            <th>Orig. $</th><th>Vecow $</th><th>Client $</th><th>Profit%</th>
+            <th>Note</th><th>Merge</th><th></th>
           </tr></thead>
           <tbody id="itemsBody"></tbody>
         </table>
@@ -419,9 +456,11 @@ html[data-theme="burgundy"]{
           <select id="cat_cat">
             <option value="1a">Vecow System</option>
             <option value="1b">Power Adaptor</option>
-            <option value="2">Other Items (CPU, Modules, Cards)</option>
+            <option value="cpu">CPU</option>
+            <option value="mod">Module (4G/5G/WiFi)</option>
             <option value="gc">Graphics Card</option>
             <option value="acc">Accessory</option>
+            <option value="2">Other Items</option>
             <option value="3a">RAM</option>
             <option value="3b">Storage</option>
             <option value="4">Outsourcing</option>
@@ -430,6 +469,21 @@ html[data-theme="burgundy"]{
         <div class="f3"><label>Product</label><input id="cat_product" placeholder="e.g. ECX-3200-PEG"></div>
         <div class="f4"><label>Description / Specs</label><input id="cat_desc" placeholder="Full description / specifications"></div>
         <div class="f2"><label>Default price (USD, optional)</label><input id="cat_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="f12" id="catModTypeWrap" style="display:none;">
+          <label>Module type</label>
+          <select id="cat_modType" onchange="if(this.value) document.getElementById('cat_product').value=this.value;">
+            <option value="">Choose…</option>
+            <option value="4G Module">4G Module</option>
+            <option value="5G Module">5G Module</option>
+            <option value="5G RedCap Module">5G RedCap Module</option>
+            <option value="WiFi Module">WiFi Module</option>
+          </select>
+        </div>
+        <div class="f12" id="catCompatWrap" style="display:none;">
+          <label>Compatible device series (optional)</label>
+          <input id="cat_compat" placeholder="e.g. ECX-3000, ECX-3200, EAC-4000 — comma separated">
+          <div class="hint">Leave empty to make this accessory show up for every device (universal). Use the series prefix as it appears in the Product field — e.g. "ECX-3000" will match ECX-3000, ECX-3000V, ECX-3000-PEG, ECX-3000-PoE…</div>
+        </div>
         <div class="f12"><label>Note (optional)</label><textarea id="cat_note" rows="2" placeholder="e.g. Supported quantities: Refer to Compatibility List. / Cannot pre-install / Custom hold-on bar required for RCX-3000"></textarea></div>
         <div class="f12" style="display:flex; justify-content:flex-end;"><button class="btn-primary" onclick="addCatalogItem()">+ Add to catalog</button></div>
       </div>
@@ -440,7 +494,7 @@ html[data-theme="burgundy"]{
       <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()">
       <div class="table-scroll" style="margin-top:12px;">
         <table id="catalogTable">
-          <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th>Note</th><th></th></tr></thead>
+          <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th>Compatible series</th><th>Note</th><th></th></tr></thead>
           <tbody id="catalogBody"></tbody>
         </table>
         <div id="catalogEmptyState" class="empty-state">Catalog is empty — add your first device above.</div>
@@ -513,6 +567,7 @@ let localQuotationIdSeq = 1;
 let currentTab = 'vecow';
 let usingCloudAddons = false;
 let usingCloudQuotations = false;
+const MEM_CATS = ['3a','3b','3'];
 
 const noteTemplates = {
   '': 'No note',
@@ -527,7 +582,7 @@ const compatNoteExample = 'Supported quantities: Refer to Compatibility List. / 
 
 const fieldToColumn = {
   qty:'qty', price:'price', vecowManual:'vecow_manual', clientManual:'client_manual',
-  note:'note', noteCustom:'note_custom', noteDate:'note_date', mergeGroup:'merge_group'
+  note:'note', noteCustom:'note_custom', noteDate:'note_date', mergeGroup:'merge_group', cat:'cat'
 };
 
 function setSyncStatus(mode){
@@ -595,7 +650,7 @@ function setMainTab(tab){
 
 function mapRowToItem(row){
   return {
-    id: row.id, pn: row.pn, cat: row.cat, isIntel: row.is_intel, intelDiv: row.intel_div,
+    id: row.id, pn: row.pn, cat: row.cat, isIntel: row.is_intel, cpuDiv: row.intel_div,
     tier: row.tier, product: row.product, desc: row.description, qty: row.qty, price: row.price,
     vecowManual: row.vecow_manual, clientManual: row.client_manual, note: row.note || '',
     noteCustom: row.note_custom || '', noteDate: row.note_date || '', mergeGroup: row.merge_group || '',
@@ -603,7 +658,7 @@ function mapRowToItem(row){
   };
 }
 function mapRowToCatalog(row){
-  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, note: row.note||'', createdAt: row.created_at };
+  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, note: row.note||'', compatSeries: row.compatible_series||'', createdAt: row.created_at };
 }
 function mapRowToAddon(row){
   return { id: row.id, pn: row.pn || '', name: row.name, desc: row.description || '', price: row.price, compatibleSeries: row.compatible_series || '', createdAt: row.created_at };
@@ -765,21 +820,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
   applyTheme(savedTheme);
   ['qNo','qDate','qClient'].forEach(id=>document.getElementById(id).addEventListener('change', saveMeta));
   document.getElementById('in_cat').addEventListener('change', function(){
-    document.getElementById('intelWrap').style.display = (this.value==='2') ? '' : 'none';
+    const v = this.value;
+    document.getElementById('modTypeWrap').style.display = (v==='mod') ? '' : 'none';
+    document.getElementById('inCompatWrap').style.display = (v==='acc') ? '' : 'none';
     updateTierVisibility();
+    if(v==='cpu'){ document.getElementById('advancedDetails').open = true; }
   });
-  document.getElementById('in_intel').addEventListener('change', updateTierVisibility);
+  document.getElementById('cat_cat').addEventListener('change', function(){
+    const v = this.value;
+    document.getElementById('catModTypeWrap').style.display = (v==='mod') ? '' : 'none';
+    document.getElementById('catCompatWrap').style.display = (v==='acc') ? '' : 'none';
+  });
   document.getElementById('in_pn').addEventListener('input', updatePnState);
   document.getElementById('in_pn').addEventListener('change', updatePnState);
-  document.getElementById('in_product').addEventListener('input', renderAddonCheckboxes);
+  document.getElementById('in_product').addEventListener('input', refreshCompatibilityBoxes);
   initPersistence();
 });
 
 function updateTierVisibility(){
   const cat = document.getElementById('in_cat').value;
-  const isIntel = document.getElementById('in_intel').value === '1';
-  document.getElementById('tierWrap').style.display = (cat==='1a' || cat==='1b' || cat==='gc' || cat==='acc' || (cat==='2' && !isIntel)) ? '' : 'none';
-  document.getElementById('intelDivWrap').style.display = (cat==='2' && isIntel) ? '' : 'none';
+  document.getElementById('tierWrap').style.display = (cat==='1a' || cat==='1b' || cat==='gc' || cat==='acc' || cat==='2' || cat==='mod') ? '' : 'none';
+  document.getElementById('cpuDivWrap').style.display = (cat==='cpu') ? '' : 'none';
 }
 
 /* ============ pricing engine ============ */
@@ -791,11 +852,18 @@ function computeAuto(item){
     vecow = orig*0.9;
     const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
     client = vecow/div;
-  } else if(item.cat==='2' || item.cat==='gc' || item.cat==='acc'){
-    if(item.cat==='2' && item.isIntel){ vecow = orig; client = orig/(Number(item.intelDiv)||0.8); }
-    else { vecow = orig; const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier); client = orig/div; }
-  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){ vecow = orig/0.9; client = vecow/0.8; }
-  else { vecow = orig; client = orig/0.8 + 30; }
+  } else if(item.cat==='cpu'){
+    vecow = orig;
+    client = orig/(Number(item.cpuDiv)||0.9);
+  } else if(item.cat==='mod' || item.cat==='2' || item.cat==='gc' || item.cat==='acc'){
+    vecow = orig;
+    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
+    client = orig/div;
+  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){
+    vecow = orig/0.9; client = vecow/0.8;
+  } else {
+    vecow = orig; client = orig/0.8;
+  }
   return {vecow, client};
 }
 function getEffective(item){
@@ -809,6 +877,7 @@ function profitPct(vecow, client){ if(!client) return 0; return ((client-vecow)/
 function catLabel(cat){
   return {
     '1a':'Vecow System', '1b':'Power Adaptor', '1':'Vecow System & Power Adaptor',
+    'cpu':'CPU', 'mod':'Module',
     '2':'Other Items', 'gc':'Graphics Card', 'acc':'Accessory',
     '3a':'RAM', '3b':'Storage', '3':'Memory & Storage', '4':'Outsourcing'
   }[cat] || cat;
@@ -820,7 +889,36 @@ function catClass(cat){
   if(cat==='3b') return 'cat-3b';
   if(cat==='gc') return 'cat-gc';
   if(cat==='acc') return 'cat-acc';
+  if(cat==='cpu') return 'cat-cpu';
+  if(cat==='mod') return 'cat-mod';
   return 'cat-'+cat;
+}
+function calcBreakdown(item){
+  const orig = Number(item.price)||0; const qty = Number(item.qty)||1;
+  const auto = computeAuto(item);
+  const overridden = (item.vecowManual!==null && item.vecowManual!==undefined && item.vecowManual!=='') || (item.clientManual!==null && item.clientManual!==undefined && item.clientManual!=='');
+  let lines = [];
+  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1'){
+    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
+    lines.push(`Vecow: $${orig.toFixed(2)} × 0.9 = $${auto.vecow.toFixed(2)}`);
+    lines.push(`Client: $${auto.vecow.toFixed(2)} ÷ ${div} = $${auto.client.toFixed(2)}`);
+  } else if(item.cat==='cpu'){
+    const div = Number(item.cpuDiv)||0.9;
+    lines.push(`Vecow: $${orig.toFixed(2)} (transparent price, no discount)`);
+    lines.push(`Client: $${orig.toFixed(2)} ÷ ${div} = $${auto.client.toFixed(2)}`);
+  } else if(item.cat==='mod' || item.cat==='2' || item.cat==='gc' || item.cat==='acc'){
+    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
+    lines.push(`Vecow: $${orig.toFixed(2)} (no discount)`);
+    lines.push(`Client: $${orig.toFixed(2)} ÷ ${div} = $${auto.client.toFixed(2)}`);
+  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){
+    lines.push(`Vecow: $${orig.toFixed(2)} ÷ 0.9 = $${auto.vecow.toFixed(2)}`);
+    lines.push(`Client: $${auto.vecow.toFixed(2)} ÷ 0.8 = $${auto.client.toFixed(2)}`);
+  } else {
+    lines.push(`Vecow: $${orig.toFixed(2)} (cost price, no markup)`);
+    lines.push(`Client: $${orig.toFixed(2)} ÷ 0.8 = $${auto.client.toFixed(2)}`);
+  }
+  if(overridden) lines.push('(price manually overridden below)');
+  return lines.join('\n');
 }
 
 /* ============ PN lookup / quick add flow ============ */
@@ -840,6 +938,7 @@ function updatePnState(){
   if(!pnVal){
     preview.style.display='none'; newFields.style.display='none';
     document.getElementById('addonsBox').style.display='none';
+    document.getElementById('accessoriesBox').style.display='none';
     pendingCatalogNote = '';
     return;
   }
@@ -848,7 +947,7 @@ function updatePnState(){
     (c.product||'').toLowerCase()===pnVal.toLowerCase()
   );
   if(match){
-    const validCats = ['1a','1b','2','gc','acc','3a','3b','4'];
+    const validCats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
     const matchCat = validCats.includes(match.cat) ? match.cat : '2';
     document.getElementById('in_cat').value = matchCat;
     document.getElementById('in_product').value = match.product || '';
@@ -870,7 +969,6 @@ function updatePnState(){
     }
     preview.style.display = 'flex';
     newFields.style.display = 'none';
-    document.getElementById('intelWrap').style.display = (matchCat==='2') ? '' : 'none';
     updateTierVisibility();
   } else {
     pendingCatalogNote = '';
@@ -878,31 +976,38 @@ function updatePnState(){
     preview.style.display = 'none';
     newFields.style.display = 'block';
   }
-  renderAddonCheckboxes();
+  refreshCompatibilityBoxes();
 }
-async function maybeSaveNewPnToCatalog(pn, cat, product, desc, price){
+async function maybeSaveNewPnToCatalog(pn, cat, product, desc, price, compatSeries){
   if(!pn || pn==='N/A') return;
   if(catalog.some(c=>(c.pn||'').toLowerCase()===pn.toLowerCase())) return;
   const chk = document.getElementById('saveToCatalogChk');
   if(chk && !chk.checked) return;
   if(usingCloud){
-    try{ await sb.from('catalog').insert({pn, cat, product, description:desc, price, created_at: Date.now()}); }
+    try{ await sb.from('catalog').insert({pn, cat, product, description:desc, price, compatible_series: compatSeries||'', created_at: Date.now()}); }
     catch(e){ console.error(e); }
   } else {
-    catalog.push({id:'local_cat_'+(localCatIdSeq++), pn, cat, product, desc, price, createdAt: Date.now()});
+    catalog.push({id:'local_cat_'+(localCatIdSeq++), pn, cat, product, desc, price, compatSeries: compatSeries||'', createdAt: Date.now()});
     saveLocalCatalog();
     renderCatalog();
   }
 }
 
-/* ============ add-ons: compatibility + quick-add checklist ============ */
-function addonMatchesProduct(addon, productName){
-  const series = (addon.compatibleSeries||'').trim();
-  if(!series) return true; // universal add-on
+/* ============ add-ons / accessories: compatibility + quick-add checklist ============ */
+function seriesMatches(seriesStr, productName){
+  const series = (seriesStr||'').trim();
+  if(!series) return true; // universal
   const prod = (productName||'').toUpperCase();
   if(!prod) return false;
   return series.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean).some(tok=>prod.includes(tok));
 }
+function addonMatchesProduct(addon, productName){ return seriesMatches(addon.compatibleSeries, productName); }
+
+function refreshCompatibilityBoxes(){
+  renderAddonCheckboxes();
+  renderCompatibleAccessories();
+}
+
 function renderAddonCheckboxes(){
   const box = document.getElementById('addonsBox');
   const list = document.getElementById('addonsCheckList');
@@ -921,6 +1026,31 @@ function renderAddonCheckboxes(){
       <label class="checkbox-line" style="margin-top:0;">
         <input type="checkbox" class="addon-chk" value="${a.id}">
         <span>${escapeHtml(a.name)}${a.pn?' · '+escapeHtml(a.pn):''} — $${Number(a.price||0).toFixed(2)}${a.desc?' · '+escapeHtml(a.desc):''}</span>
+      </label>
+    `).join('');
+  }
+  box.style.display = 'block';
+}
+
+function renderCompatibleAccessories(){
+  const box = document.getElementById('accessoriesBox');
+  const list = document.getElementById('accessoriesCheckList');
+  const title = document.getElementById('accessoriesBoxTitle');
+  const productName = document.getElementById('in_product').value.trim();
+  const accessoryCatalog = catalog.filter(c=>c.cat==='acc');
+  if(!productName || accessoryCatalog.length===0){ box.style.display='none'; return; }
+
+  const showAll = document.getElementById('showAllAccessoriesChk').checked;
+  const matched = accessoryCatalog.filter(a=> showAll || seriesMatches(a.compatSeries, productName));
+
+  title.textContent = showAll ? 'All accessories' : `Compatible accessories for ${productName}`;
+  if(matched.length===0){
+    list.innerHTML = `<div class="hint" style="margin:0;">No compatible accessories found for this device. Check "Show all accessories" to pick manually.</div>`;
+  } else {
+    list.innerHTML = matched.map(a=>`
+      <label class="checkbox-line" style="margin-top:0;">
+        <input type="checkbox" class="accessory-chk" value="${a.id}">
+        <span>${escapeHtml(a.product||'')}${a.pn?' · '+escapeHtml(a.pn):''} — $${a.price!=null?Number(a.price).toFixed(2):'—'}${a.desc?' · '+escapeHtml(a.desc):''}</span>
       </label>
     `).join('');
   }
@@ -1023,11 +1153,13 @@ async function addCatalogItem(){
     pn: pn, cat: document.getElementById('cat_cat').value, product: product,
     desc: document.getElementById('cat_desc').value, price: priceRaw ? Number(priceRaw) : null,
     note: document.getElementById('cat_note').value.trim(),
+    compatSeries: document.getElementById('cat_compat').value.trim(),
     createdAt: Date.now()
   };
   if(usingCloud){
     const { error } = await sb.from('catalog').insert({
-      pn: data.pn, cat: data.cat, product: data.product, description: data.desc, price: data.price, note: data.note, created_at: data.createdAt
+      pn: data.pn, cat: data.cat, product: data.product, description: data.desc, price: data.price, note: data.note,
+      compatible_series: data.compatSeries, created_at: data.createdAt
     });
     if(error){
       console.error(error);
@@ -1044,7 +1176,10 @@ async function addCatalogItem(){
     saveLocalCatalog();
     renderCatalog();
   }
-  ['cat_pn','cat_product','cat_desc','cat_price','cat_note'].forEach(id=>document.getElementById(id).value='');
+  ['cat_pn','cat_product','cat_desc','cat_price','cat_note','cat_compat'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cat_modType').value = '';
+  document.getElementById('catModTypeWrap').style.display = 'none';
+  document.getElementById('catCompatWrap').style.display = 'none';
 }
 
 async function removeCatalogItem(id){
@@ -1058,7 +1193,7 @@ async function removeCatalogItem(id){
     renderCatalog();
   }
 }
-const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price', note:'note' };
+const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price', note:'note', compatSeries:'compatible_series' };
 async function updateCatalogField(id, field, value){
   if(usingCloud){
     const col = catFieldToColumn[field];
@@ -1098,9 +1233,11 @@ function renderCatalog(){
         <select onchange="updateCatalogField('${c.id}','cat',this.value)" style="min-width:150px;">
           <option value="1a" ${c.cat==='1a'?'selected':''}>Vecow System</option>
           <option value="1b" ${c.cat==='1b'?'selected':''}>Power Adaptor</option>
-          <option value="2" ${c.cat==='2'?'selected':''}>Other Items</option>
+          <option value="cpu" ${c.cat==='cpu'?'selected':''}>CPU</option>
+          <option value="mod" ${c.cat==='mod'?'selected':''}>Module</option>
           <option value="gc" ${c.cat==='gc'?'selected':''}>Graphics Card</option>
           <option value="acc" ${c.cat==='acc'?'selected':''}>Accessory</option>
+          <option value="2" ${c.cat==='2'?'selected':''}>Other Items</option>
           <option value="3a" ${c.cat==='3a'?'selected':''}>RAM</option>
           <option value="3b" ${c.cat==='3b'?'selected':''}>Storage</option>
           <option value="4" ${c.cat==='4'?'selected':''}>Outsourcing</option>
@@ -1109,6 +1246,7 @@ function renderCatalog(){
       <td class="left-al"><input value="${escapeHtml(c.product||'')}" style="min-width:130px;" onchange="updateCatalogField('${c.id}','product',this.value)"></td>
       <td class="left-al"><input value="${escapeHtml(c.desc||'')}" style="min-width:240px;" onchange="updateCatalogField('${c.id}','desc',this.value)"></td>
       <td class="num"><input type="number" min="0" step="0.01" value="${c.price!=null?c.price:''}" style="width:95px;" onchange="updateCatalogField('${c.id}','price',this.value?Number(this.value):null)"></td>
+      <td class="left-al"><input value="${escapeHtml(c.compatSeries||'')}" placeholder="Universal" style="min-width:170px;" onchange="updateCatalogField('${c.id}','compatSeries',this.value)"></td>
       <td class="left-al"><textarea rows="2" style="min-width:180px; font-size:.76rem;" placeholder="Optional note" onchange="updateCatalogField('${c.id}','note',this.value)">${escapeHtml(c.note||'')}</textarea></td>
       <td><button class="btn-danger" onclick="removeCatalogItem('${c.id}')">Delete</button></td>
     `;
@@ -1207,7 +1345,7 @@ async function restoreItemsFromSnapshot(snapshotItems){
     const { error: delErr } = await sb.from('items').delete().gte('created_at', 0);
     if(delErr){ console.error(delErr); toast('Could not clear current items', 'error'); return false; }
     const rows = snapshotItems.map(it=>({
-      pn: it.pn, cat: it.cat, is_intel: it.isIntel, intel_div: it.intelDiv, tier: it.tier,
+      pn: it.pn, cat: it.cat, is_intel: false, intel_div: it.cpuDiv, tier: it.tier,
       product: it.product, description: it.desc, qty: it.qty, price: it.price,
       vecow_manual: it.vecowManual, client_manual: it.clientManual, note: it.note||'',
       note_custom: it.noteCustom||'', note_date: it.noteDate||'', merge_group: it.mergeGroup||'',
@@ -1343,7 +1481,7 @@ function renderDashboard(){
 
 /* ============ item CRUD ============ */
 async function addItem(){
-  const validCats = ['1a','1b','2','gc','acc','3a','3b','4'];
+  const validCats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
   let cat = document.getElementById('in_cat').value;
   if(!validCats.includes(cat)) cat = '2';
   const price = document.getElementById('in_price').value;
@@ -1355,8 +1493,8 @@ async function addItem(){
   const noteFromCatalog = pendingCatalogNote || '';
   const base = {
     pn: pn, cat: cat,
-    isIntel: cat==='2' && document.getElementById('in_intel').value==='1',
-    intelDiv: document.getElementById('in_intelDiv').value,
+    isIntel: false,
+    cpuDiv: document.getElementById('in_cpuDiv').value,
     tier: document.getElementById('in_tier').value,
     product: product,
     desc: document.getElementById('in_desc').value,
@@ -1369,7 +1507,7 @@ async function addItem(){
 
   if(usingCloud){
     const row = {
-      pn: base.pn, cat: base.cat, is_intel: base.isIntel, intel_div: base.intelDiv, tier: base.tier,
+      pn: base.pn, cat: base.cat, is_intel: false, intel_div: base.cpuDiv, tier: base.tier,
       product: base.product, description: base.desc, qty: base.qty, price: base.price,
       vecow_manual: null, client_manual: null, note: base.note, note_custom: base.noteCustom, note_date:'', merge_group:'',
       created_at: base.createdAt
@@ -1383,7 +1521,16 @@ async function addItem(){
   }
 
   pendingCatalogNote = '';
-  await maybeSaveNewPnToCatalog(base.pn, base.cat, base.product, base.desc, base.price);
+  const newCompat = base.cat==='acc' ? (document.getElementById('in_compat').value||'').trim() : '';
+  await maybeSaveNewPnToCatalog(base.pn, base.cat, base.product, base.desc, base.price, newCompat);
+
+  // selected compatible accessories (from catalog) -> each becomes its own line item
+  const checkedAccessoryIds = Array.from(document.querySelectorAll('.accessory-chk:checked')).map(el=>el.value);
+  for(const id of checkedAccessoryIds){
+    const c = catalog.find(x=>x.id===id);
+    if(!c) continue;
+    await addAddonAsQuotationItem(c.pn || 'N/A', c.product, c.desc, c.price||0, base.qty, base.tier, 'acc');
+  }
 
   // selected compatible/general add-ons -> each becomes its own line item with the real add-on PN
   const checkedAddonIds = Array.from(document.querySelectorAll('.addon-chk:checked')).map(el=>el.value);
@@ -1402,26 +1549,31 @@ async function addItem(){
     await addAddonAsQuotationItem(oneOffPn, oneOffName, oneOffDesc, Number(oneOffPriceRaw), base.qty, base.tier);
   }
 
-  ['in_pn','in_product','in_desc','in_price','in_oneoff_pn','in_oneoff_name','in_oneoff_desc','in_oneoff_price'].forEach(id=>document.getElementById(id).value='');
+  ['in_pn','in_product','in_desc','in_price','in_compat','in_oneoff_pn','in_oneoff_name','in_oneoff_desc','in_oneoff_price'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('in_qty').value=1;
+  document.getElementById('in_modType').value='';
+  document.getElementById('modTypeWrap').style.display='none';
+  document.getElementById('inCompatWrap').style.display='none';
   document.getElementById('pnPreview').style.display='none';
   document.getElementById('newDeviceFields').style.display='none';
   document.getElementById('addonsBox').style.display='none';
+  document.getElementById('accessoriesBox').style.display='none';
   document.getElementById('showAllAddonsChk').checked=false;
+  document.getElementById('showAllAccessoriesChk').checked=false;
   render();
   toast(`${product} added to quotation`, 'success');
 }
 
-async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier){
+async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier, cat){
   const row = {
-    pn: pn, cat: '2', isIntel: false, intelDiv: '0.8', tier: tier || 'auto',
+    pn: pn, cat: cat||'2', isIntel: false, cpuDiv: null, tier: tier || 'auto',
     product: product, desc: desc || '', qty: qty, price: Number(price)||0,
     vecowManual: null, clientManual: null, note: '', noteCustom: '', noteDate: '', mergeGroup: '',
     createdAt: Date.now()
   };
   if(usingCloud){
     const dbRow = {
-      pn: row.pn, cat: row.cat, is_intel: row.isIntel, intel_div: row.intelDiv, tier: row.tier,
+      pn: row.pn, cat: row.cat, is_intel: false, intel_div: row.cpuDiv, tier: row.tier,
       product: row.product, description: row.desc, qty: row.qty, price: row.price,
       vecow_manual: null, client_manual: null, note:'', note_custom:'', note_date:'', merge_group:'',
       created_at: row.createdAt
@@ -1493,34 +1645,37 @@ function render(){
   items.forEach((item, idx)=>{
     const eff = getEffective(item);
     const pct = profitPct(eff.vecow, eff.client);
+    const breakdown = escapeHtml(calcBreakdown(item));
     const tr = document.createElement('tr');
     if(pct < 20) tr.classList.add('low-margin');
     tr.innerHTML = `
       <td><input type="checkbox" class="item-select-chk" value="${item.id}"></td>
       <td class="num">${idx+1}</td>
-      <td>${escapeHtml(item.pn)}</td>
+      <td class="trunc" title="${escapeHtml(item.pn)}">${escapeHtml(item.pn)}</td>
       <td>
-        <select onchange="updateField('${item.id}','cat',this.value)" style="min-width:130px;">
+        <select onchange="updateField('${item.id}','cat',this.value)" style="width:100%;">
           <option value="1a" ${item.cat==='1a'?'selected':''}>Vecow System</option>
           <option value="1b" ${item.cat==='1b'?'selected':''}>Power Adaptor</option>
-          <option value="2" ${item.cat==='2'?'selected':''}>Other Items</option>
+          <option value="cpu" ${item.cat==='cpu'?'selected':''}>CPU</option>
+          <option value="mod" ${item.cat==='mod'?'selected':''}>Module</option>
           <option value="gc" ${item.cat==='gc'?'selected':''}>Graphics Card</option>
           <option value="acc" ${item.cat==='acc'?'selected':''}>Accessory</option>
+          <option value="2" ${item.cat==='2'?'selected':''}>Other Items</option>
           <option value="3a" ${item.cat==='3a'?'selected':''}>RAM</option>
           <option value="3b" ${item.cat==='3b'?'selected':''}>Storage</option>
           <option value="4" ${item.cat==='4'?'selected':''}>Outsourcing</option>
         </select>
       </td>
-      <td class="left-al">${escapeHtml(item.product)}</td>
-      <td class="left-al" style="max-width:220px;">${escapeHtml(item.desc||'')}</td>
-      <td class="num"><input type="number" min="1" value="${item.qty}" style="width:60px" onchange="updateField('${item.id}','qty',Number(this.value))"></td>
-      <td class="num"><input type="number" min="0" step="0.01" value="${item.price}" style="width:80px" onchange="updateField('${item.id}','price',Number(this.value))"></td>
-      <td class="num"><input type="number" step="0.01" value="${eff.vecow.toFixed(2)}" style="width:80px" onchange="updateField('${item.id}','vecowManual',this.value)"></td>
-      <td class="num"><input type="number" step="0.01" value="${eff.client.toFixed(2)}" style="width:80px" onchange="updateField('${item.id}','clientManual',this.value)"></td>
+      <td class="left-al trunc" title="${escapeHtml(item.product)}">${escapeHtml(item.product)}</td>
+      <td class="left-al trunc" title="${escapeHtml(item.desc||'')}">${escapeHtml(item.desc||'')}</td>
+      <td class="num"><input type="number" min="1" value="${item.qty}" style="width:100%" onchange="updateField('${item.id}','qty',Number(this.value))"></td>
+      <td class="num"><input type="number" min="0" step="0.01" value="${item.price}" style="width:100%" onchange="updateField('${item.id}','price',Number(this.value))"></td>
+      <td class="num"><input type="number" step="0.01" value="${eff.vecow.toFixed(2)}" style="width:100%" title="${breakdown}" onchange="updateField('${item.id}','vecowManual',this.value)"></td>
+      <td class="num"><input type="number" step="0.01" value="${eff.client.toFixed(2)}" style="width:100%" title="${breakdown}" onchange="updateField('${item.id}','clientManual',this.value)"></td>
       <td class="num" style="color:${pct<20?'var(--danger)':'var(--ok)'}; font-weight:700;">${pct.toFixed(1)}%</td>
       <td>${renderNoteCell(item)}</td>
       <td><input class="merge-chip" placeholder="—" value="${escapeHtml(item.mergeGroup||'')}" onchange="updateField('${item.id}','mergeGroup',this.value)"></td>
-      <td><button class="btn-danger" onclick="removeItem('${item.id}')">Delete</button></td>
+      <td><button class="btn-danger" style="padding:5px 7px; font-size:.7rem;" onclick="removeItem('${item.id}')">Del</button></td>
     `;
     body.appendChild(tr);
   });
@@ -1531,12 +1686,12 @@ function render(){
 }
 
 function renderNoteCell(item){
-  let html = `<select onchange="handleNoteSelect('${item.id}', this.value)" style="width:130px;">`;
+  let html = `<select onchange="handleNoteSelect('${item.id}', this.value)" style="width:100%;">`;
   Object.keys(noteTemplates).forEach(k=>{ html += `<option value="${k}" ${item.note===k?'selected':''}>${noteTemplates[k]}</option>`; });
   html += `</select>`;
-  if(item.note==='validtill') html += `<input type="date" value="${item.noteDate||''}" style="width:130px;margin-top:4px;" onchange="updateField('${item.id}','noteDate',this.value)">`;
+  if(item.note==='validtill') html += `<input type="date" value="${item.noteDate||''}" style="width:150px;margin-top:4px;" onchange="updateField('${item.id}','noteDate',this.value)">`;
   if(item.note==='custom' || item.note==='compat'){
-    html += `<textarea rows="3" style="width:200px;margin-top:4px;font-size:.76rem;" placeholder="Note text" onchange="updateField('${item.id}','noteCustom',this.value)">${escapeHtml(item.noteCustom||'')}</textarea>`;
+    html += `<textarea rows="3" style="width:190px;margin-top:4px;font-size:.72rem;" placeholder="Note text" onchange="updateField('${item.id}','noteCustom',this.value)">${escapeHtml(item.noteCustom||'')}</textarea>`;
   }
   return html;
 }
@@ -1580,17 +1735,28 @@ function mergedRowSummary(row){
   return { types, products, descs, total, noteText };
 }
 
-function buildClientRows(){
-  const groups = {}; const singles = [];
-  items.forEach(item=>{
+function splitItemsForDisplay(list){
+  const groups = {};
+  const singles = [];
+  list.forEach(item=>{
     if(item.mergeGroup && item.mergeGroup.trim()!==''){
       const key = item.mergeGroup.trim();
       if(!groups[key]) groups[key] = [];
       groups[key].push(item);
-    } else { singles.push({merged:false, items:[item]}); }
+    } else { singles.push(item); }
   });
-  const mergedGroups = Object.keys(groups).map(k=>({merged:true, key:k, items:groups[k]}));
-  return [...singles, ...mergedGroups];
+  const mainRows = [], memRows = [];
+  singles.forEach(item=>{
+    const target = MEM_CATS.includes(item.cat) ? memRows : mainRows;
+    target.push({merged:false, items:[item]});
+  });
+  Object.keys(groups).forEach(k=>{
+    const grp = groups[k];
+    const allMem = grp.every(it=>MEM_CATS.includes(it.cat));
+    const target = allMem ? memRows : mainRows;
+    target.push({merged:true, key:k, items:grp});
+  });
+  return { mainRows, memRows };
 }
 
 function setTab(tab){
@@ -1601,36 +1767,54 @@ function setTab(tab){
   document.getElementById('previewClient').style.display = tab==='client' ? '' : 'none';
 }
 
-function renderPreviews(){
-  let vHtml = `<table><thead><tr><th>No</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>Price (USD)</th><th>U/P (USD)</th><th>Total (USD)</th></tr></thead><tbody>`;
-  items.forEach((item, idx)=>{
+function vecowTableHtml(list){
+  let h = `<table><thead><tr><th>No</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>Price (USD)</th><th>U/P (USD)</th><th>Total (USD)</th></tr></thead><tbody>`;
+  list.forEach((item, idx)=>{
     const eff = getEffective(item);
-    vHtml += `<tr><td>${idx+1}</td><td>${escapeHtml(item.pn)}</td><td>${catLabel(item.cat)}</td>
+    h += `<tr><td>${idx+1}</td><td>${escapeHtml(item.pn)}</td><td>${catLabel(item.cat)}</td>
       <td class="left-al">${escapeHtml(item.product)}</td><td class="left-al">${escapeHtml(item.desc)}</td>
       <td>${item.qty}</td><td>$${Number(item.price).toFixed(2)}</td>
-      <td style="color:var(--danger);font-weight:700;">${eff.vecow.toFixed(2)}</td><td>${(eff.vecow*item.qty).toFixed(2)}</td></tr>`;
+      <td style="color:var(--danger);font-weight:700;" title="${escapeHtml(calcBreakdown(item))}">${eff.vecow.toFixed(2)}</td><td>${(eff.vecow*item.qty).toFixed(2)}</td></tr>`;
   });
-  vHtml += `</tbody></table>`;
-  document.getElementById('previewVecow').innerHTML = items.length ? vHtml : '<div class="empty-state">No items yet</div>';
-
-  const rows = buildClientRows();
-  let cHtml = `<table><thead><tr><th>No</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>U/P (USD)</th><th>Total (USD)</th><th>Note</th></tr></thead><tbody>`;
+  h += `</tbody></table>`;
+  return h;
+}
+function clientTableHtml(rows){
+  let h = `<table><thead><tr><th>No</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>U/P (USD)</th><th>Total (USD)</th><th>Note</th></tr></thead><tbody>`;
   rows.forEach((row, idx)=>{
     if(!row.merged){
       const item = row.items[0]; const eff = getEffective(item);
-      cHtml += `<tr><td>${idx+1}</td><td>${catLabel(item.cat)}</td>
+      h += `<tr><td>${idx+1}</td><td>${catLabel(item.cat)}</td>
         <td class="left-al">${escapeHtml(item.product)}</td><td class="left-al">${escapeHtml(item.desc)}</td>
-        <td>${item.qty}</td><td>${eff.client.toFixed(2)}</td><td>${(eff.client*item.qty).toFixed(2)}</td>
+        <td>${item.qty}</td><td title="${escapeHtml(calcBreakdown(item))}">${eff.client.toFixed(2)}</td><td>${(eff.client*item.qty).toFixed(2)}</td>
         <td class="tag-note">${escapeHtml(resolveNoteText(item))}</td></tr>`;
     } else {
       const s = mergedRowSummary(row);
-      cHtml += `<tr><td>${idx+1}</td><td>${s.types}</td>
+      h += `<tr><td>${idx+1}</td><td>${s.types}</td>
         <td class="left-al">${escapeHtml(s.products)}</td><td class="left-al">${escapeHtml(s.descs)}</td>
         <td>1</td><td>—</td><td>${s.total.toFixed(2)}</td><td class="tag-note">${escapeHtml(s.noteText)}</td></tr>`;
     }
   });
-  cHtml += `</tbody></table>`;
-  document.getElementById('previewClient').innerHTML = items.length ? cHtml : '<div class="empty-state">No items yet</div>';
+  h += `</tbody></table>`;
+  return h;
+}
+
+function renderPreviews(){
+  const mainItems = items.filter(i=>!MEM_CATS.includes(i.cat));
+  const memItemsList = items.filter(i=>MEM_CATS.includes(i.cat));
+
+  let vHtml = mainItems.length ? vecowTableHtml(mainItems) : '<div class="empty-state">No items yet</div>';
+  if(memItemsList.length){
+    vHtml += `<div class="subtable-label"><span class="dot2"></span>Memory &amp; Storage</div>` + vecowTableHtml(memItemsList);
+  }
+  document.getElementById('previewVecow').innerHTML = vHtml;
+
+  const { mainRows, memRows } = splitItemsForDisplay(items);
+  let cHtml = mainRows.length ? clientTableHtml(mainRows) : '<div class="empty-state">No items yet</div>';
+  if(memRows.length){
+    cHtml += `<div class="subtable-label"><span class="dot2"></span>Memory &amp; Storage</div>` + clientTableHtml(memRows);
+  }
+  document.getElementById('previewClient').innerHTML = cHtml;
 }
 
 
@@ -1688,40 +1872,62 @@ async function exportExcel(){
   tableHead(headRow, 1, ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','Total (USD)'], headBlue);
   tableHead(headRow, 11, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
 
-  let r = headRow+1;
-  items.forEach((item, idx)=>{
-    const eff = getEffective(item);
-    const vals = [idx+1, item.pn, catLabel(item.cat), item.product, item.desc, item.qty,
-      Number(item.price.toFixed(2)), Number(eff.vecow.toFixed(2)), Number((eff.vecow*item.qty).toFixed(2))];
-    vals.forEach((v,i)=>{
-      const c = ws.getCell(r, i+1); c.value = v;
-      c.alignment = {horizontal:(i===3||i===4)?'left':'center', vertical:'middle', wrapText:true};
-      c.font = {size:9, color: i===7 ? {argb:red} : undefined, bold: i===7};
-      borderCell(c);
+  function writeVecowRows(startRow, list){
+    let r = startRow;
+    list.forEach((item, idx)=>{
+      const eff = getEffective(item);
+      const vals = [idx+1, item.pn, catLabel(item.cat), item.product, item.desc, item.qty,
+        Number(item.price.toFixed(2)), Number(eff.vecow.toFixed(2)), Number((eff.vecow*item.qty).toFixed(2))];
+      vals.forEach((v,i)=>{
+        const c = ws.getCell(r, i+1); c.value = v;
+        c.alignment = {horizontal:(i===3||i===4)?'left':'center', vertical:'middle', wrapText:true};
+        c.font = {size:9, color: i===7 ? {argb:red} : undefined, bold: i===7};
+        borderCell(c);
+      });
+      r++;
     });
-    r++;
-  });
+    return r;
+  }
+  function writeClientRows(startRow, rows){
+    let r = startRow;
+    rows.forEach((row, idx)=>{
+      let vals;
+      if(!row.merged){
+        const item = row.items[0]; const eff = getEffective(item);
+        vals = [idx+1, catLabel(item.cat), item.product, item.desc, item.qty,
+          Number(eff.client.toFixed(2)), Number((eff.client*item.qty).toFixed(2)), resolveNoteText(item)];
+      } else {
+        const s = mergedRowSummary(row);
+        vals = [idx+1, s.types, s.products, s.descs, 1, '—', Number(s.total.toFixed(2)), s.noteText];
+      }
+      vals.forEach((v,i)=>{
+        const c = ws.getCell(r, 11+i); c.value = v;
+        c.alignment = {horizontal:(i===2||i===3||i===7)?'left':'center', vertical:'middle', wrapText:true};
+        c.font = {size:9};
+        borderCell(c);
+      });
+      r++;
+    });
+    return r;
+  }
 
-  const rows = buildClientRows();
-  let rc = headRow+1;
-  rows.forEach((row, idx)=>{
-    let vals;
-    if(!row.merged){
-      const item = row.items[0]; const eff = getEffective(item);
-      vals = [idx+1, catLabel(item.cat), item.product, item.desc, item.qty,
-        Number(eff.client.toFixed(2)), Number((eff.client*item.qty).toFixed(2)), resolveNoteText(item)];
-    } else {
-      const s = mergedRowSummary(row);
-      vals = [idx+1, s.types, s.products, s.descs, 1, '—', Number(s.total.toFixed(2)), s.noteText];
-    }
-    vals.forEach((v,i)=>{
-      const c = ws.getCell(rc, 11+i); c.value = v;
-      c.alignment = {horizontal:(i===2||i===3||i===7)?'left':'center', vertical:'middle', wrapText:true};
-      c.font = {size:9};
-      borderCell(c);
-    });
-    rc++;
-  });
+  const mainItems = items.filter(i=>!MEM_CATS.includes(i.cat));
+  const memItemsList = items.filter(i=>MEM_CATS.includes(i.cat));
+  const { mainRows, memRows } = splitItemsForDisplay(items);
+
+  const vecowNextRow = writeVecowRows(headRow+1, mainItems);
+  const clientNextRow = writeClientRows(headRow+1, mainRows);
+
+  if(memItemsList.length || memRows.length){
+    const sectionRow = Math.max(vecowNextRow, clientNextRow) + 1;
+    styleTitleRow(sectionRow, 1, 9, 'Memory & Storage');
+    styleTitleRow(sectionRow, 11, 18, 'Memory & Storage');
+    const memHeadRow = sectionRow + 1;
+    tableHead(memHeadRow, 1, ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','Total (USD)'], headBlue);
+    tableHead(memHeadRow, 11, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
+    writeVecowRows(memHeadRow+1, memItemsList);
+    writeClientRows(memHeadRow+1, memRows);
+  }
 
   const filename = `Vecow_Quotation_${qNo}_${dateLabel||'draft'}.xlsx`;
   const buf = await wb.xlsx.writeBuffer();
