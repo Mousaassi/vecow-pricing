@@ -236,22 +236,73 @@ html[data-theme="burgundy"]{
 .modal-box{background:var(--card); color:var(--ink); border-radius:var(--radius); padding:26px; max-width:400px; width:100%; box-shadow:var(--shadow-md); animation:card-in .18s ease-out;}
 .modal-msg{font-size:.92rem; color:var(--ink); margin-bottom:22px; line-height:1.55; white-space:pre-line;}
 .modal-actions{display:flex; justify-content:flex-end; gap:10px;}
+
+/* auth gate */
+.auth-overlay{position:fixed; inset:0; z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px;
+  background:radial-gradient(circle at 20% 10%, rgba(176,141,63,.16), transparent 45%), var(--navy);}
+.auth-card{background:var(--card); color:var(--ink); border-radius:22px; padding:40px 36px 32px; max-width:380px; width:100%;
+  box-shadow:0 24px 60px rgba(0,0,0,.35); text-align:center; animation:card-in .25s ease-out;}
+.auth-logo{display:flex; justify-content:center; margin-bottom:16px;}
+.auth-title{font-family:"Manrope",sans-serif; font-size:1.5rem; font-weight:800; margin:0; color:var(--ink);}
+.auth-title .light{font-weight:500; color:var(--ink-soft); font-family:"Inter",sans-serif;}
+.auth-subtitle{font-size:.72rem; color:var(--ink-soft); margin-top:5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700;}
+.auth-card .auth-field{margin-top:16px; text-align:left;}
+.auth-error{background:var(--danger-bg); color:var(--danger); font-size:.8rem; font-weight:600; padding:9px 12px; border-radius:var(--radius-sm); margin-top:14px; text-align:left;}
+.auth-hint{font-size:.72rem; color:var(--ink-soft); margin-top:20px; line-height:1.55;}
+#appRoot{display:none;}
+
+/* header extras */
+.brand-subtitle{font-size:.68rem; color:var(--ink-soft); font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-top:3px;}
+.header-right{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+.user-box{display:flex; align-items:center; gap:9px; background:var(--card); border:1px solid var(--line); padding:6px 8px 6px 14px; border-radius:20px; box-shadow:var(--shadow);}
+.user-email{font-size:.76rem; color:var(--ink-soft); font-weight:600; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.btn-signout{background:transparent; border:1px solid var(--line); color:var(--ink-soft); padding:6px 12px; font-size:.74rem; font-weight:700; border-radius:16px;}
+.btn-signout:hover{border-color:var(--danger); color:var(--danger);}
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div id="authGate" class="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="brand-mark" style="width:54px; height:54px; font-size:1.35rem;">V</div></div>
+    <h1 class="auth-title">Vecow <span class="light">Tech</span></h1>
+    <div class="auth-subtitle">Pricing &amp; Quotation Tool</div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input id="auth_email" type="email" placeholder="you@vecow.com" autocomplete="username">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input id="auth_password" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div id="authError" class="auth-error" style="display:none;"></div>
+    <button class="btn-primary" style="width:100%; margin-top:18px;" onclick="signIn()">Sign in</button>
+    <div class="auth-hint">Access is limited to the Vecow Tech team. Contact your admin if you need an account.</div>
+  </div>
+</div>
+
+<div class="wrap" id="appRoot">
 
   <header class="top">
     <div class="brand">
       <div class="brand-mark">V</div>
-      <div class="brand-name">Vecow <span class="light">Tech</span></div>
+      <div>
+        <div class="brand-name">Vecow <span class="light">Tech</span></div>
+        <div class="brand-subtitle">Pricing &amp; Quotation Tool</div>
+      </div>
     </div>
-    <div class="theme-picker" id="themePicker">
-      <button class="theme-chip" data-swatch="gold" title="Navy & Gold" style="background:linear-gradient(135deg,#0a1830 50%,#b08d3f 50%);" onclick="applyTheme('gold')"></button>
-      <button class="theme-chip" data-swatch="ocean" title="Ocean Blue" style="background:linear-gradient(135deg,#0b2a4a 50%,#1d9bd8 50%);" onclick="applyTheme('ocean')"></button>
-      <button class="theme-chip" data-swatch="emerald" title="Emerald" style="background:linear-gradient(135deg,#0d2f22 50%,#c9a227 50%);" onclick="applyTheme('emerald')"></button>
-      <button class="theme-chip" data-swatch="burgundy" title="Burgundy" style="background:linear-gradient(135deg,#3a0d1c 50%,#c9974a 50%);" onclick="applyTheme('burgundy')"></button>
-      <button class="theme-chip" data-swatch="dark" title="Dark Mode" style="background:linear-gradient(135deg,#0d1526 50%,#d4b568 50%);" onclick="applyTheme('dark')"></button>
+    <div class="header-right">
+      <div class="user-box" id="userBox" style="display:none;">
+        <span class="user-email" id="userEmailLabel"></span>
+        <button class="btn-signout" onclick="signOut()">Sign out</button>
+      </div>
+      <div class="theme-picker" id="themePicker">
+        <button class="theme-chip" data-swatch="gold" title="Navy & Gold" style="background:linear-gradient(135deg,#0a1830 50%,#b08d3f 50%);" onclick="applyTheme('gold')"></button>
+        <button class="theme-chip" data-swatch="ocean" title="Ocean Blue" style="background:linear-gradient(135deg,#0b2a4a 50%,#1d9bd8 50%);" onclick="applyTheme('ocean')"></button>
+        <button class="theme-chip" data-swatch="emerald" title="Emerald" style="background:linear-gradient(135deg,#0d2f22 50%,#c9a227 50%);" onclick="applyTheme('emerald')"></button>
+        <button class="theme-chip" data-swatch="burgundy" title="Burgundy" style="background:linear-gradient(135deg,#3a0d1c 50%,#c9974a 50%);" onclick="applyTheme('burgundy')"></button>
+        <button class="theme-chip" data-swatch="dark" title="Dark Mode" style="background:linear-gradient(135deg,#0d1526 50%,#d4b568 50%);" onclick="applyTheme('dark')"></button>
+      </div>
     </div>
   </header>
 
@@ -280,7 +331,7 @@ html[data-theme="burgundy"]{
           <thead><tr><th>No.</th><th>Date</th><th>Client</th><th>Items</th><th>Client Total</th><th>Margin</th><th></th></tr></thead>
           <tbody id="quotationsBody"></tbody>
         </table>
-        <div id="quotationsEmptyState" class="empty-state">No saved quotations yet — click "Save quotation" in the Quotation tab to keep a snapshot.</div>
+        <div id="quotationsEmptyState" class="empty-state">📋 No saved quotations yet — click "Save quotation" in the Quotation tab to keep a snapshot.</div>
       </div>
     </div>
   </div>
@@ -421,7 +472,7 @@ html[data-theme="burgundy"]{
           </tr></thead>
           <tbody id="itemsBody"></tbody>
         </table>
-        <div id="emptyState" class="empty-state">No items yet — look up a PN above to add one.</div>
+        <div id="emptyState" class="empty-state">🧾 No items yet — look up a PN above to add one.</div>
       </div>
       <div class="toolbar">
         <button class="btn-primary" onclick="mergeSelectedItems()">⛓ Merge selected</button>
@@ -497,7 +548,7 @@ html[data-theme="burgundy"]{
           <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th>Compatible series</th><th>Note</th><th></th></tr></thead>
           <tbody id="catalogBody"></tbody>
         </table>
-        <div id="catalogEmptyState" class="empty-state">Catalog is empty — add your first device above.</div>
+        <div id="catalogEmptyState" class="empty-state">🗂️ Catalog is empty — add your first device above.</div>
       </div>
     </div>
   </div>
@@ -529,7 +580,7 @@ html[data-theme="burgundy"]{
           <thead><tr><th>PN</th><th>Name</th><th>Description</th><th>Compatible series</th><th>Price (USD)</th><th></th></tr></thead>
           <tbody id="addonsBody"></tbody>
         </table>
-        <div id="addonsEmptyState" class="empty-state">No add-ons yet — add your first one above.</div>
+        <div id="addonsEmptyState" class="empty-state">🔌 No add-ons yet — add your first one above.</div>
       </div>
     </div>
   </div>
@@ -814,6 +865,56 @@ async function saveMeta(){
   }
 }
 
+/* ============ authentication gate ============ */
+function showAuthGate(msg){
+  document.getElementById('appRoot').style.display = 'none';
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('userBox').style.display = 'none';
+  const err = document.getElementById('authError');
+  if(msg){ err.textContent = msg; err.style.display = 'block'; }
+  else { err.style.display = 'none'; err.textContent = ''; }
+}
+function showApp(email){
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('appRoot').style.display = '';
+  document.getElementById('userBox').style.display = 'flex';
+  document.getElementById('userEmailLabel').textContent = email || '';
+}
+async function signIn(){
+  const email = document.getElementById('auth_email').value.trim();
+  const password = document.getElementById('auth_password').value;
+  if(!email || !password){ showAuthGate('Please enter your email and password.'); return; }
+  if(!sb) sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ showAuthGate(error.message || 'Sign-in failed. Check your email and password.'); return; }
+  showApp(data.user ? data.user.email : email);
+  await initPersistence();
+}
+async function signOut(){
+  if(!(await appConfirm('Sign out of the Vecow Tech pricing tool?'))) return;
+  if(sb){ try{ await sb.auth.signOut(); }catch(e){ console.error(e); } }
+  document.getElementById('auth_password').value = '';
+  showAuthGate();
+}
+async function checkAuthAndStart(){
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  try{
+    const { data } = await sb.auth.getSession();
+    if(data && data.session && data.session.user){
+      showApp(data.session.user.email);
+      await initPersistence();
+    } else {
+      showAuthGate();
+    }
+    sb.auth.onAuthStateChange((event)=>{
+      if(event === 'SIGNED_OUT'){ showAuthGate(); }
+    });
+  } catch(e){
+    console.error('Auth check failed:', e);
+    showAuthGate('Could not reach the sign-in service. Check your connection and reload.');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', ()=>{
   let savedTheme = 'gold';
   try{ savedTheme = localStorage.getItem('vecow_theme') || 'gold'; }catch(e){}
@@ -834,7 +935,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('in_pn').addEventListener('input', updatePnState);
   document.getElementById('in_pn').addEventListener('change', updatePnState);
   document.getElementById('in_product').addEventListener('input', refreshCompatibilityBoxes);
-  initPersistence();
+  document.getElementById('auth_email').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); });
+  document.getElementById('auth_password').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); });
+  checkAuthAndStart();
 });
 
 function updateTierVisibility(){
@@ -1441,10 +1544,10 @@ function renderDashboard(){
   const totalDevices = savedQuotations.reduce((s,q)=>s+(q.items||[]).length,0);
 
   document.getElementById('kpiRow').innerHTML = `
-    <div class="stat-card"><div class="stat-lbl">Saved Quotations</div><div class="stat-val">${totalQ}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Total Quoted Value</div><div class="stat-val">$${totalClientValue.toFixed(0)}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Average Margin</div><div class="stat-val ${avgMargin<20?'danger':'ok'}">${avgMargin.toFixed(1)}%</div></div>
-    <div class="stat-card"><div class="stat-lbl">Devices Quoted</div><div class="stat-val">${totalDevices}</div></div>
+    <div class="stat-card"><div class="stat-lbl">📁 Saved Quotations</div><div class="stat-val">${totalQ}</div></div>
+    <div class="stat-card"><div class="stat-lbl">💵 Total Quoted Value</div><div class="stat-val">$${totalClientValue.toFixed(0)}</div></div>
+    <div class="stat-card"><div class="stat-lbl">📊 Average Margin</div><div class="stat-val ${avgMargin<20?'danger':'ok'}">${avgMargin.toFixed(1)}%</div></div>
+    <div class="stat-card"><div class="stat-lbl">🖥️ Devices Quoted</div><div class="stat-val">${totalDevices}</div></div>
   `;
 
   const chartData = savedQuotations.slice(0,12);
@@ -1480,6 +1583,20 @@ function renderDashboard(){
 }
 
 /* ============ item CRUD ============ */
+function resetAddItemForm(){
+  ['in_pn','in_product','in_desc','in_price','in_compat','in_oneoff_pn','in_oneoff_name','in_oneoff_desc','in_oneoff_price'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('in_qty').value=1;
+  document.getElementById('in_modType').value='';
+  document.getElementById('modTypeWrap').style.display='none';
+  document.getElementById('inCompatWrap').style.display='none';
+  document.getElementById('pnPreview').style.display='none';
+  document.getElementById('newDeviceFields').style.display='none';
+  document.getElementById('addonsBox').style.display='none';
+  document.getElementById('accessoriesBox').style.display='none';
+  document.getElementById('showAllAddonsChk').checked=false;
+  document.getElementById('showAllAccessoriesChk').checked=false;
+}
+
 async function addItem(){
   const validCats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
   let cat = document.getElementById('in_cat').value;
@@ -1489,6 +1606,21 @@ async function addItem(){
   const pn = document.getElementById('in_pn').value.trim() || 'N/A';
   if(!price || Number(price)<=0){ await appAlert('Please enter the current price'); return; }
   if(!product){ await appAlert('This PN needs a product name — check "New PN" details above'); return; }
+
+  if(pn !== 'N/A'){
+    const dup = items.find(it=>(it.pn||'').toLowerCase()===pn.toLowerCase());
+    if(dup){
+      const addQty = Number(document.getElementById('in_qty').value)||1;
+      const mergeConfirm = await appConfirm(`"${dup.pn}" is already in this quotation (current qty: ${dup.qty}). Increase its quantity by ${addQty} instead of adding a new line?`);
+      if(mergeConfirm){
+        await updateField(dup.id, 'qty', dup.qty + addQty);
+        resetAddItemForm();
+        render();
+        toast(`Quantity increased to ${dup.qty + addQty}`, 'success');
+        return;
+      }
+    }
+  }
 
   const noteFromCatalog = pendingCatalogNote || '';
   const base = {
@@ -1549,17 +1681,7 @@ async function addItem(){
     await addAddonAsQuotationItem(oneOffPn, oneOffName, oneOffDesc, Number(oneOffPriceRaw), base.qty, base.tier);
   }
 
-  ['in_pn','in_product','in_desc','in_price','in_compat','in_oneoff_pn','in_oneoff_name','in_oneoff_desc','in_oneoff_price'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('in_qty').value=1;
-  document.getElementById('in_modType').value='';
-  document.getElementById('modTypeWrap').style.display='none';
-  document.getElementById('inCompatWrap').style.display='none';
-  document.getElementById('pnPreview').style.display='none';
-  document.getElementById('newDeviceFields').style.display='none';
-  document.getElementById('addonsBox').style.display='none';
-  document.getElementById('accessoriesBox').style.display='none';
-  document.getElementById('showAllAddonsChk').checked=false;
-  document.getElementById('showAllAccessoriesChk').checked=false;
+  resetAddItemForm();
   render();
   toast(`${product} added to quotation`, 'success');
 }
@@ -1629,10 +1751,10 @@ function renderStats(){
   items.forEach(item=>{ const eff=getEffective(item); totalVecow += eff.vecow*item.qty; totalClient += eff.client*item.qty; });
   const overallPct = totalClient ? ((totalClient-totalVecow)/totalClient*100) : 0;
   document.getElementById('statRow').innerHTML = `
-    <div class="stat-card"><div class="stat-lbl">Items</div><div class="stat-val">${items.length}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Vecow Cost</div><div class="stat-val">$${totalVecow.toFixed(2)}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Client Price</div><div class="stat-val">$${totalClient.toFixed(2)}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Margin</div><div class="stat-val ${overallPct<20?'danger':'ok'}">${overallPct.toFixed(1)}%</div></div>
+    <div class="stat-card"><div class="stat-lbl">📦 Items</div><div class="stat-val">${items.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">🏭 Vecow Cost</div><div class="stat-val">$${totalVecow.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="stat-lbl">🏷️ Client Price</div><div class="stat-val">$${totalClient.toFixed(2)}</div></div>
+    <div class="stat-card"><div class="stat-lbl">📊 Margin</div><div class="stat-val ${overallPct<20?'danger':'ok'}">${overallPct.toFixed(1)}%</div></div>
   `;
 }
 
