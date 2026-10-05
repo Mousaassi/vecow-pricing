@@ -469,15 +469,15 @@ html[data-theme="burgundy"]{
       <div class="table-scroll">
         <table id="itemsTable">
           <colgroup>
-            <col style="width:24px"><col style="width:22px"><col style="width:78px"><col style="width:92px">
-            <col style="width:100px"><col style="width:170px"><col style="width:36px"><col style="width:54px">
-            <col style="width:54px"><col style="width:54px"><col style="width:46px"><col style="width:110px">
-            <col style="width:52px"><col style="width:46px">
+            <col style="width:22px"><col style="width:20px"><col style="width:66px"><col style="width:78px">
+            <col style="width:82px"><col style="width:120px"><col style="width:30px"><col style="width:48px">
+            <col style="width:62px"><col style="width:48px"><col style="width:62px"><col style="width:48px">
+            <col style="width:42px"><col style="width:96px"><col style="width:44px"><col style="width:40px">
           </colgroup>
           <thead><tr>
             <th><input type="checkbox" id="selectAllChk" onchange="toggleSelectAllItems(this)"></th>
             <th>#</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th>
-            <th>Orig. $</th><th>Vecow $</th><th>Client $</th><th>Profit%</th>
+            <th>Orig. $</th><th>Step 1</th><th>Vecow $</th><th>Step 2</th><th>Client $</th><th>Profit%</th>
             <th>Note</th><th>Merge</th><th></th>
           </tr></thead>
           <tbody id="itemsBody"></tbody>
@@ -644,7 +644,7 @@ const compatNoteExample = 'Supported quantities: Refer to Compatibility List. / 
 const fieldToColumn = {
   qty:'qty', price:'price', vecowManual:'vecow_manual', clientManual:'client_manual',
   note:'note', noteCustom:'note_custom', noteDate:'note_date', mergeGroup:'merge_group', cat:'cat',
-  step1Op:'step1_op', step1Val:'step1_val'
+  step1Op:'step1_op', step1Val:'step1_val', step2Op:'step2_op', step2Val:'step2_val'
 };
 
 function setSyncStatus(mode){
@@ -714,8 +714,10 @@ function mapRowToItem(row){
   return {
     id: row.id, pn: row.pn, cat: row.cat, isIntel: row.is_intel, cpuDiv: row.intel_div,
     tier: row.tier,
-    step1Op: row.step1_op || 'mul',
-    step1Val: (row.step1_val!==null && row.step1_val!==undefined) ? row.step1_val : 0.9,
+    step1Op: row.step1_op || null,
+    step1Val: (row.step1_val!==null && row.step1_val!==undefined) ? row.step1_val : null,
+    step2Op: row.step2_op || null,
+    step2Val: (row.step2_val!==null && row.step2_val!==undefined) ? row.step2_val : null,
     product: row.product, desc: row.description, qty: row.qty, price: row.price,
     vecowManual: row.vecow_manual, clientManual: row.client_manual, note: row.note || '',
     noteCustom: row.note_custom || '', noteDate: row.note_date || '', mergeGroup: row.merge_group || '',
@@ -962,57 +964,63 @@ function updateTierVisibility(){
 }
 
 /* ============ pricing engine ============ */
+/* Every item has its own Step 1 (Orig.$ -> Vecow$) and Step 2 (Vecow$ -> Client$) operation,
+   each a {op:'mul'|'div', val:number} pair the user can edit directly in the items table.
+   When the item hasn't been touched yet, a sensible category-based default is used
+   (so existing quotations and the "Advanced options" add-item flow keep working), but the
+   stored step1Op/step1Val/step2Op/step2Val (once set) always win — nothing is auto-calculated
+   behind the user's back. */
 function tierDivisor(qty){ if(qty>=100) return 0.8; if(qty>=50) return 0.75; return 0.7; }
-function getStep1Val(item){
-  return (item.step1Val!==null && item.step1Val!==undefined && item.step1Val!=='') ? Number(item.step1Val) : 0.9;
+
+function defaultStep1Op(item){
+  return 'mul';
+}
+function defaultStep1Val(item){
+  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1') return 0.9;
+  if(item.cat==='3a' || item.cat==='3b' || item.cat==='3') return 0.9;
+  return 1; // no markup/discount at step 1 for this category by default
+}
+function defaultStep2Op(item){
+  return 'div';
+}
+function defaultStep2Val(item){
+  const qty = Number(item.qty)||1;
+  if(item.cat==='cpu') return Number(item.cpuDiv)||0.9;
+  if(item.cat==='3a' || item.cat==='3b' || item.cat==='3') return 0.8;
+  if(item.cat==='4') return 0.8;
+  if(item.tier && item.tier!=='auto') return Number(item.tier);
+  return tierDivisor(qty);
 }
 function getStep1Op(item){
-  return item.step1Op === 'div' ? 'div' : 'mul';
+  if(item.step1Op==='mul' || item.step1Op==='div') return item.step1Op;
+  if(item.cat==='3a' || item.cat==='3b' || item.cat==='3') return 'div';
+  return defaultStep1Op(item);
+}
+function getStep1Val(item){
+  return (item.step1Val!==null && item.step1Val!==undefined && item.step1Val!=='') ? Number(item.step1Val) : defaultStep1Val(item);
+}
+function getStep2Op(item){
+  if(item.step2Op==='mul' || item.step2Op==='div') return item.step2Op;
+  return defaultStep2Op(item);
+}
+function getStep2Val(item){
+  return (item.step2Val!==null && item.step2Val!==undefined && item.step2Val!=='') ? Number(item.step2Val) : defaultStep2Val(item);
+}
+/* step1Parts/step2Parts expose the same two operations in a formula-friendly shape
+   {op:'mul'|'div', val:number} — used both for tooltips and Excel formulas, so the
+   live preview and the exported spreadsheet always agree. */
+function getStep1Parts(item){ return {op:getStep1Op(item), val:getStep1Val(item)}; }
+function getStep2Parts(item){ return {op:getStep2Op(item), val:getStep2Val(item)}; }
+
+function applyStep(base, parts){
+  if(!parts.val) return base;
+  return parts.op==='div' ? base/parts.val : base*parts.val;
 }
 function computeAuto(item){
-  const orig = Number(item.price)||0; const qty = Number(item.qty)||1;
-  let vecow, client;
-  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1'){
-    const op1 = getStep1Op(item); const val1 = getStep1Val(item);
-    vecow = op1==='div' ? orig/val1 : orig*val1;
-    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
-    client = vecow/div;
-  } else if(item.cat==='cpu'){
-    vecow = orig;
-    client = orig/(Number(item.cpuDiv)||0.9);
-  } else if(item.cat==='mod' || item.cat==='2' || item.cat==='gc' || item.cat==='acc'){
-    vecow = orig;
-    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
-    client = orig/div;
-  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){
-    vecow = orig/0.9; client = vecow/0.8;
-  } else {
-    vecow = orig; client = orig/0.8;
-  }
+  const orig = Number(item.price)||0;
+  const vecow = applyStep(orig, getStep1Parts(item));
+  const client = applyStep(vecow, getStep2Parts(item));
   return {vecow, client};
-}
-/* step1Parts/step2Parts describe the two pricing operations in a formula-friendly shape
-   {op:'mul'|'div'|'none', val:number|null} — used both for tooltips and Excel formulas,
-   so the live preview and the exported spreadsheet always agree. */
-function getStep1Parts(item){
-  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1'){
-    return {op:getStep1Op(item), val:getStep1Val(item)};
-  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){
-    return {op:'div', val:0.9};
-  }
-  return {op:'none', val:null};
-}
-function getStep2Parts(item){
-  const qty = Number(item.qty)||1;
-  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1' || item.cat==='mod' || item.cat==='2' || item.cat==='gc' || item.cat==='acc'){
-    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
-    return {op:'div', val:div};
-  } else if(item.cat==='cpu'){
-    return {op:'div', val:(Number(item.cpuDiv)||0.9)};
-  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){
-    return {op:'div', val:0.8};
-  }
-  return {op:'div', val:0.8};
 }
 function getEffective(item){
   const auto = computeAuto(item);
@@ -1042,31 +1050,15 @@ function catClass(cat){
   return 'cat-'+cat;
 }
 function calcBreakdown(item){
-  const orig = Number(item.price)||0; const qty = Number(item.qty)||1;
+  const orig = Number(item.price)||0;
   const auto = computeAuto(item);
   const overridden = (item.vecowManual!==null && item.vecowManual!==undefined && item.vecowManual!=='') || (item.clientManual!==null && item.clientManual!==undefined && item.clientManual!=='');
+  const s1 = getStep1Parts(item); const s2 = getStep2Parts(item);
+  const sym1 = s1.op==='div' ? '÷' : '×';
+  const sym2 = s2.op==='div' ? '÷' : '×';
   let lines = [];
-  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1'){
-    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
-    const op1 = getStep1Op(item); const val1 = getStep1Val(item);
-    const sym1 = op1==='div' ? '÷' : '×';
-    lines.push(`Vecow: $${orig.toFixed(2)} ${sym1} ${val1} = $${auto.vecow.toFixed(2)}`);
-    lines.push(`Client: $${auto.vecow.toFixed(2)} ÷ ${div} = $${auto.client.toFixed(2)}`);
-  } else if(item.cat==='cpu'){
-    const div = Number(item.cpuDiv)||0.9;
-    lines.push(`Vecow: $${orig.toFixed(2)} (transparent price, no discount)`);
-    lines.push(`Client: $${orig.toFixed(2)} ÷ ${div} = $${auto.client.toFixed(2)}`);
-  } else if(item.cat==='mod' || item.cat==='2' || item.cat==='gc' || item.cat==='acc'){
-    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
-    lines.push(`Vecow: $${orig.toFixed(2)} (no discount)`);
-    lines.push(`Client: $${orig.toFixed(2)} ÷ ${div} = $${auto.client.toFixed(2)}`);
-  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){
-    lines.push(`Vecow: $${orig.toFixed(2)} ÷ 0.9 = $${auto.vecow.toFixed(2)}`);
-    lines.push(`Client: $${auto.vecow.toFixed(2)} ÷ 0.8 = $${auto.client.toFixed(2)}`);
-  } else {
-    lines.push(`Vecow: $${orig.toFixed(2)} (cost price, no markup)`);
-    lines.push(`Client: $${orig.toFixed(2)} ÷ 0.8 = $${auto.client.toFixed(2)}`);
-  }
+  lines.push(`Vecow: $${orig.toFixed(2)} ${sym1} ${s1.val} = $${auto.vecow.toFixed(2)}`);
+  lines.push(`Client: $${auto.vecow.toFixed(2)} ${sym2} ${s2.val} = $${auto.client.toFixed(2)}`);
   if(overridden) lines.push('(price manually overridden below)');
   return lines.join('\n');
 }
@@ -1496,7 +1488,8 @@ async function restoreItemsFromSnapshot(snapshotItems){
     if(delErr){ console.error(delErr); toast('Could not clear current items', 'error'); return false; }
     const rows = snapshotItems.map(it=>({
       pn: it.pn, cat: it.cat, is_intel: false, intel_div: it.cpuDiv, tier: it.tier,
-      step1_op: it.step1Op || 'mul', step1_val: (it.step1Val!==null && it.step1Val!==undefined) ? it.step1Val : 0.9,
+      step1_op: it.step1Op || null, step1_val: (it.step1Val!==null && it.step1Val!==undefined) ? it.step1Val : null,
+      step2_op: it.step2Op || null, step2_val: (it.step2Val!==null && it.step2Val!==undefined) ? it.step2Val : null,
       product: it.product, description: it.desc, qty: it.qty, price: it.price,
       vecow_manual: it.vecowManual, client_manual: it.clientManual, note: it.note||'',
       note_custom: it.noteCustom||'', note_date: it.noteDate||'', merge_group: it.mergeGroup||'',
@@ -1678,8 +1671,9 @@ async function addItem(){
     isIntel: false,
     cpuDiv: document.getElementById('in_cpuDiv').value,
     tier: document.getElementById('in_tier').value,
-    step1Op: document.getElementById('in_step1Op').value || 'mul',
-    step1Val: Number(document.getElementById('in_step1Val').value) || 0.9,
+    step1Op: (cat==='1a'||cat==='1b') ? (document.getElementById('in_step1Op').value || 'mul') : null,
+    step1Val: (cat==='1a'||cat==='1b') ? (Number(document.getElementById('in_step1Val').value) || 0.9) : null,
+    step2Op: null, step2Val: null,
     product: product,
     desc: document.getElementById('in_desc').value,
     qty: Number(document.getElementById('in_qty').value)||1,
@@ -1692,7 +1686,7 @@ async function addItem(){
   if(usingCloud){
     const row = {
       pn: base.pn, cat: base.cat, is_intel: false, intel_div: base.cpuDiv, tier: base.tier,
-      step1_op: base.step1Op, step1_val: base.step1Val,
+      step1_op: base.step1Op, step1_val: base.step1Val, step2_op: base.step2Op, step2_val: base.step2Val,
       product: base.product, description: base.desc, qty: base.qty, price: base.price,
       vecow_manual: null, client_manual: null, note: base.note, note_custom: base.noteCustom, note_date:'', merge_group:'',
       created_at: base.createdAt
@@ -1742,7 +1736,7 @@ async function addItem(){
 async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier, cat){
   const row = {
     pn: pn, cat: cat||'2', isIntel: false, cpuDiv: null, tier: tier || 'auto',
-    step1Op: 'mul', step1Val: 0.9,
+    step1Op: null, step1Val: null, step2Op: null, step2Val: null,
     product: product, desc: desc || '', qty: qty, price: Number(price)||0,
     vecowManual: null, clientManual: null, note: '', noteCustom: '', noteDate: '', mergeGroup: '',
     createdAt: Date.now()
@@ -1750,7 +1744,7 @@ async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier, cat)
   if(usingCloud){
     const dbRow = {
       pn: row.pn, cat: row.cat, is_intel: false, intel_div: row.cpuDiv, tier: row.tier,
-      step1_op: row.step1Op, step1_val: row.step1Val,
+      step1_op: row.step1Op, step1_val: row.step1Val, step2_op: row.step2Op, step2_val: row.step2Val,
       product: row.product, description: row.desc, qty: row.qty, price: row.price,
       vecow_manual: null, client_manual: null, note:'', note_custom:'', note_date:'', merge_group:'',
       created_at: row.createdAt
@@ -1847,8 +1841,10 @@ function render(){
       <td class="left-al trunc" title="${escapeHtml(item.desc||'')}">${escapeHtml(item.desc||'')}</td>
       <td class="num"><input type="number" min="1" value="${item.qty}" style="width:100%" onchange="updateField('${item.id}','qty',Number(this.value))"></td>
       <td class="num"><input type="number" min="0" step="0.01" value="${item.price}" style="width:100%" onchange="updateField('${item.id}','price',Number(this.value))"></td>
-      <td class="num"><input type="number" step="0.01" value="${eff.vecow.toFixed(2)}" style="width:100%" title="${breakdown}" onchange="updateField('${item.id}','vecowManual',this.value)"></td>
-      <td class="num"><input type="number" step="0.01" value="${eff.client.toFixed(2)}" style="width:100%" title="${breakdown}" onchange="updateField('${item.id}','clientManual',this.value)"></td>
+      <td>${ratioCellHtml(item,'step1')}</td>
+      <td class="num" style="font-weight:700;" title="${breakdown}">$${eff.vecow.toFixed(2)}</td>
+      <td>${ratioCellHtml(item,'step2')}</td>
+      <td class="num" style="font-weight:700;" title="${breakdown}">$${eff.client.toFixed(2)}</td>
       <td class="num" style="color:${pct<20?'var(--danger)':'var(--ok)'}; font-weight:700;">${pct.toFixed(1)}%</td>
       <td>${renderNoteCell(item)}</td>
       <td><input class="merge-chip" placeholder="—" value="${escapeHtml(item.mergeGroup||'')}" onchange="updateField('${item.id}','mergeGroup',this.value)"></td>
@@ -1862,6 +1858,20 @@ function render(){
   if(document.getElementById('liveKpiRow')) renderDashboard();
 }
 
+function ratioCellHtml(item, step){
+  const isStep1 = step==='step1';
+  const op = isStep1 ? getStep1Op(item) : getStep2Op(item);
+  const val = isStep1 ? getStep1Val(item) : getStep2Val(item);
+  const opField = isStep1 ? 'step1Op' : 'step2Op';
+  const valField = isStep1 ? 'step1Val' : 'step2Val';
+  return `<div style="display:flex; gap:2px;">
+    <select onchange="updateField('${item.id}','${opField}',this.value)" style="width:34px; padding:2px 1px; font-size:.7rem;">
+      <option value="mul" ${op==='mul'?'selected':''}>×</option>
+      <option value="div" ${op==='div'?'selected':''}>÷</option>
+    </select>
+    <input type="number" step="0.01" value="${val}" style="width:100%; min-width:0; padding:2px; font-size:.7rem;" onchange="updateField('${item.id}','${valField}',Number(this.value))">
+  </div>`;
+}
 function renderNoteCell(item){
   let html = `<select onchange="handleNoteSelect('${item.id}', this.value)" style="width:100%;">`;
   Object.keys(noteTemplates).forEach(k=>{ html += `<option value="${k}" ${item.note===k?'selected':''}>${noteTemplates[k]}</option>`; });
@@ -1945,7 +1955,7 @@ function setTab(tab){
 }
 
 function vecowTableHtml(list){
-  let h = `<table><thead><tr><th>No</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>Orig. $</th><th>Step 1 $</th><th>Step 2 $</th><th>Total $</th></tr></thead><tbody>`;
+  let h = `<table><thead><tr><th>No</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>Price (USD)</th><th>U/P (USD)</th><th>U/P (USD)</th><th>Total (USD)</th></tr></thead><tbody>`;
   list.forEach((item, idx)=>{
     const eff = getEffective(item);
     h += `<tr><td>${idx+1}</td><td>${escapeHtml(item.pn)}</td><td>${catLabel(item.cat)}</td>
@@ -2048,7 +2058,7 @@ async function exportExcel(){
   if(clientName){ styleTitleRow(3,1,10, 'Client: ' + clientName); ws.getRow(3).height = 16; }
 
   const headRow = clientName ? 4 : 3;
-  tableHead(headRow, 1, ['No','PN','Type','Product','Description','Qty','Orig. $','Step 1 $','Step 2 $','Total $'], headBlue);
+  tableHead(headRow, 1, ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','U/P (USD)','Total (USD)'], headBlue);
   tableHead(headRow, 12, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
 
   // Formula-based Vecow(PO) rows: Orig.$ is col G(7); Step1 -> H(8) = G op val1;
@@ -2141,7 +2151,7 @@ async function exportExcel(){
     styleTitleRow(sectionRow, 1, 10, 'Memory & Storage');
     styleTitleRow(sectionRow, 12, 19, 'Memory & Storage');
     const memHeadRow = sectionRow + 1;
-    tableHead(memHeadRow, 1, ['No','PN','Type','Product','Description','Qty','Orig. $','Step 1 $','Step 2 $','Total $'], headBlue);
+    tableHead(memHeadRow, 1, ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','U/P (USD)','Total (USD)'], headBlue);
     tableHead(memHeadRow, 12, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
     writeVecowRows(memHeadRow+1, memItemsList);
     writeClientRows(memHeadRow+1, memRows);
