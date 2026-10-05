@@ -643,7 +643,8 @@ const compatNoteExample = 'Supported quantities: Refer to Compatibility List. / 
 
 const fieldToColumn = {
   qty:'qty', price:'price', vecowManual:'vecow_manual', clientManual:'client_manual',
-  note:'note', noteCustom:'note_custom', noteDate:'note_date', mergeGroup:'merge_group', cat:'cat'
+  note:'note', noteCustom:'note_custom', noteDate:'note_date', mergeGroup:'merge_group', cat:'cat',
+  step1Op:'step1_op', step1Val:'step1_val'
 };
 
 function setSyncStatus(mode){
@@ -712,7 +713,10 @@ function setMainTab(tab){
 function mapRowToItem(row){
   return {
     id: row.id, pn: row.pn, cat: row.cat, isIntel: row.is_intel, cpuDiv: row.intel_div,
-    tier: row.tier, product: row.product, desc: row.description, qty: row.qty, price: row.price,
+    tier: row.tier,
+    step1Op: row.step1_op || 'mul',
+    step1Val: (row.step1_val!==null && row.step1_val!==undefined) ? row.step1_val : 0.9,
+    product: row.product, desc: row.description, qty: row.qty, price: row.price,
     vecowManual: row.vecow_manual, clientManual: row.client_manual, note: row.note || '',
     noteCustom: row.note_custom || '', noteDate: row.note_date || '', mergeGroup: row.merge_group || '',
     createdAt: row.created_at
@@ -959,11 +963,18 @@ function updateTierVisibility(){
 
 /* ============ pricing engine ============ */
 function tierDivisor(qty){ if(qty>=100) return 0.8; if(qty>=50) return 0.75; return 0.7; }
+function getStep1Val(item){
+  return (item.step1Val!==null && item.step1Val!==undefined && item.step1Val!=='') ? Number(item.step1Val) : 0.9;
+}
+function getStep1Op(item){
+  return item.step1Op === 'div' ? 'div' : 'mul';
+}
 function computeAuto(item){
   const orig = Number(item.price)||0; const qty = Number(item.qty)||1;
   let vecow, client;
   if(item.cat==='1a' || item.cat==='1b' || item.cat==='1'){
-    vecow = orig*0.9;
+    const op1 = getStep1Op(item); const val1 = getStep1Val(item);
+    vecow = op1==='div' ? orig/val1 : orig*val1;
     const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
     client = vecow/div;
   } else if(item.cat==='cpu'){
@@ -979,6 +990,29 @@ function computeAuto(item){
     vecow = orig; client = orig/0.8;
   }
   return {vecow, client};
+}
+/* step1Parts/step2Parts describe the two pricing operations in a formula-friendly shape
+   {op:'mul'|'div'|'none', val:number|null} — used both for tooltips and Excel formulas,
+   so the live preview and the exported spreadsheet always agree. */
+function getStep1Parts(item){
+  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1'){
+    return {op:getStep1Op(item), val:getStep1Val(item)};
+  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){
+    return {op:'div', val:0.9};
+  }
+  return {op:'none', val:null};
+}
+function getStep2Parts(item){
+  const qty = Number(item.qty)||1;
+  if(item.cat==='1a' || item.cat==='1b' || item.cat==='1' || item.cat==='mod' || item.cat==='2' || item.cat==='gc' || item.cat==='acc'){
+    const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
+    return {op:'div', val:div};
+  } else if(item.cat==='cpu'){
+    return {op:'div', val:(Number(item.cpuDiv)||0.9)};
+  } else if(item.cat==='3a' || item.cat==='3b' || item.cat==='3'){
+    return {op:'div', val:0.8};
+  }
+  return {op:'div', val:0.8};
 }
 function getEffective(item){
   const auto = computeAuto(item);
@@ -1014,7 +1048,9 @@ function calcBreakdown(item){
   let lines = [];
   if(item.cat==='1a' || item.cat==='1b' || item.cat==='1'){
     const div = item.tier==='auto' ? tierDivisor(qty) : Number(item.tier);
-    lines.push(`Vecow: $${orig.toFixed(2)} × 0.9 = $${auto.vecow.toFixed(2)}`);
+    const op1 = getStep1Op(item); const val1 = getStep1Val(item);
+    const sym1 = op1==='div' ? '÷' : '×';
+    lines.push(`Vecow: $${orig.toFixed(2)} ${sym1} ${val1} = $${auto.vecow.toFixed(2)}`);
     lines.push(`Client: $${auto.vecow.toFixed(2)} ÷ ${div} = $${auto.client.toFixed(2)}`);
   } else if(item.cat==='cpu'){
     const div = Number(item.cpuDiv)||0.9;
@@ -1460,6 +1496,7 @@ async function restoreItemsFromSnapshot(snapshotItems){
     if(delErr){ console.error(delErr); toast('Could not clear current items', 'error'); return false; }
     const rows = snapshotItems.map(it=>({
       pn: it.pn, cat: it.cat, is_intel: false, intel_div: it.cpuDiv, tier: it.tier,
+      step1_op: it.step1Op || 'mul', step1_val: (it.step1Val!==null && it.step1Val!==undefined) ? it.step1Val : 0.9,
       product: it.product, description: it.desc, qty: it.qty, price: it.price,
       vecow_manual: it.vecowManual, client_manual: it.clientManual, note: it.note||'',
       note_custom: it.noteCustom||'', note_date: it.noteDate||'', merge_group: it.mergeGroup||'',
@@ -1597,6 +1634,8 @@ function renderDashboard(){
 function resetAddItemForm(){
   ['in_pn','in_product','in_desc','in_price','in_compat','in_oneoff_pn','in_oneoff_name','in_oneoff_desc','in_oneoff_price'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('in_qty').value=1;
+  document.getElementById('in_step1Op').value='mul';
+  document.getElementById('in_step1Val').value='0.9';
   document.getElementById('in_modType').value='';
   document.getElementById('modTypeWrap').style.display='none';
   document.getElementById('inCompatWrap').style.display='none';
@@ -1639,6 +1678,8 @@ async function addItem(){
     isIntel: false,
     cpuDiv: document.getElementById('in_cpuDiv').value,
     tier: document.getElementById('in_tier').value,
+    step1Op: document.getElementById('in_step1Op').value || 'mul',
+    step1Val: Number(document.getElementById('in_step1Val').value) || 0.9,
     product: product,
     desc: document.getElementById('in_desc').value,
     qty: Number(document.getElementById('in_qty').value)||1,
@@ -1651,6 +1692,7 @@ async function addItem(){
   if(usingCloud){
     const row = {
       pn: base.pn, cat: base.cat, is_intel: false, intel_div: base.cpuDiv, tier: base.tier,
+      step1_op: base.step1Op, step1_val: base.step1Val,
       product: base.product, description: base.desc, qty: base.qty, price: base.price,
       vecow_manual: null, client_manual: null, note: base.note, note_custom: base.noteCustom, note_date:'', merge_group:'',
       created_at: base.createdAt
@@ -1700,6 +1742,7 @@ async function addItem(){
 async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier, cat){
   const row = {
     pn: pn, cat: cat||'2', isIntel: false, cpuDiv: null, tier: tier || 'auto',
+    step1Op: 'mul', step1Val: 0.9,
     product: product, desc: desc || '', qty: qty, price: Number(price)||0,
     vecowManual: null, clientManual: null, note: '', noteCustom: '', noteDate: '', mergeGroup: '',
     createdAt: Date.now()
@@ -1707,6 +1750,7 @@ async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier, cat)
   if(usingCloud){
     const dbRow = {
       pn: row.pn, cat: row.cat, is_intel: false, intel_div: row.cpuDiv, tier: row.tier,
+      step1_op: row.step1Op, step1_val: row.step1Val,
       product: row.product, description: row.desc, qty: row.qty, price: row.price,
       vecow_manual: null, client_manual: null, note:'', note_custom:'', note_date:'', merge_group:'',
       created_at: row.createdAt
@@ -1901,13 +1945,15 @@ function setTab(tab){
 }
 
 function vecowTableHtml(list){
-  let h = `<table><thead><tr><th>No</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>Price (USD)</th><th>U/P (USD)</th><th>Total (USD)</th></tr></thead><tbody>`;
+  let h = `<table><thead><tr><th>No</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th><th>Orig. $</th><th>Step 1 $</th><th>Step 2 $</th><th>Total $</th></tr></thead><tbody>`;
   list.forEach((item, idx)=>{
     const eff = getEffective(item);
     h += `<tr><td>${idx+1}</td><td>${escapeHtml(item.pn)}</td><td>${catLabel(item.cat)}</td>
       <td class="left-al">${escapeHtml(item.product)}</td><td class="left-al">${escapeHtml(item.desc)}</td>
       <td>${item.qty}</td><td>$${Number(item.price).toFixed(2)}</td>
-      <td style="color:var(--danger);font-weight:700;" title="${escapeHtml(calcBreakdown(item))}">${eff.vecow.toFixed(2)}</td><td>${(eff.vecow*item.qty).toFixed(2)}</td></tr>`;
+      <td style="color:var(--danger);font-weight:700;" title="${escapeHtml(calcBreakdown(item))}">$${eff.vecow.toFixed(2)}</td>
+      <td title="${escapeHtml(calcBreakdown(item))}">$${eff.client.toFixed(2)}</td>
+      <td>$${(eff.client*item.qty).toFixed(2)}</td></tr>`;
   });
   h += `</tbody></table>`;
   return h;
@@ -1961,7 +2007,7 @@ async function exportExcel(){
   const cyan='FF12B6C9', orange='FFE07B1E', headBlue='FF0D2C56', lightGrey='FFF2F5F9', red='FFC23B3B';
 
   ws.columns = [
-    {width:5},{width:16},{width:16},{width:16},{width:38},{width:6},{width:10},{width:10},{width:11},
+    {width:5},{width:16},{width:16},{width:16},{width:38},{width:6},{width:10},{width:10},{width:10},{width:11},
     {width:3},
     {width:5},{width:16},{width:16},{width:38},{width:6},{width:11},{width:11},{width:20}
   ];
@@ -1994,29 +2040,68 @@ async function exportExcel(){
     cell.border = {top:{style:'thin',color:{argb:'FFD9DEE6'}},bottom:{style:'thin',color:{argb:'FFD9DEE6'}},left:{style:'thin',color:{argb:'FFD9DEE6'}},right:{style:'thin',color:{argb:'FFD9DEE6'}}};
   }
 
-  styleHeaderRow(1,1,9,cyan,'Vecow (PO)');
-  styleHeaderRow(1,11,18,orange,'Client');
-  styleTitleRow(2,1,9,`${qNo} Quotation _ ${dateLabel}`);
-  styleTitleRow(2,11,18,`${qNo} Quotation _ ${dateLabel}`);
+  styleHeaderRow(1,1,10,cyan,'Vecow (PO)');
+  styleHeaderRow(1,12,19,orange,'Client');
+  styleTitleRow(2,1,10,`${qNo} Quotation _ ${dateLabel}`);
+  styleTitleRow(2,12,19,`${qNo} Quotation _ ${dateLabel}`);
   const clientName = document.getElementById('qClient').value;
-  if(clientName){ styleTitleRow(3,1,9, 'Client: ' + clientName); ws.getRow(3).height = 16; }
+  if(clientName){ styleTitleRow(3,1,10, 'Client: ' + clientName); ws.getRow(3).height = 16; }
 
   const headRow = clientName ? 4 : 3;
-  tableHead(headRow, 1, ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','Total (USD)'], headBlue);
-  tableHead(headRow, 11, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
+  tableHead(headRow, 1, ['No','PN','Type','Product','Description','Qty','Orig. $','Step 1 $','Step 2 $','Total $'], headBlue);
+  tableHead(headRow, 12, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
 
+  // Formula-based Vecow(PO) rows: Orig.$ is col G(7); Step1 -> H(8) = G op val1;
+  // Step2 -> I(9) = H ÷/× val2 (chained from Step1, matching getEffective()); Total -> J(10) = I * Qty(F,col6).
   function writeVecowRows(startRow, list){
     let r = startRow;
     list.forEach((item, idx)=>{
       const eff = getEffective(item);
-      const vals = [idx+1, item.pn, catLabel(item.cat), item.product, item.desc, item.qty,
-        Number(item.price.toFixed(2)), Number(eff.vecow.toFixed(2)), Number((eff.vecow*item.qty).toFixed(2))];
-      vals.forEach((v,i)=>{
+      const qty = Number(item.qty)||1;
+      const orig = Number(item.price)||0;
+      const plainVals = [idx+1, item.pn, catLabel(item.cat), item.product, item.desc, qty];
+      plainVals.forEach((v,i)=>{
         const c = ws.getCell(r, i+1); c.value = v;
         c.alignment = {horizontal:(i===3||i===4)?'left':'center', vertical:'middle', wrapText:true};
-        c.font = {size:9, color: i===7 ? {argb:red} : undefined, bold: i===7};
+        c.font = {size:9};
         borderCell(c);
       });
+      const origCell = ws.getCell(r, 7);
+      origCell.value = Number(orig.toFixed(2));
+      origCell.alignment = {horizontal:'center', vertical:'middle'};
+      origCell.font = {size:9};
+      borderCell(origCell);
+
+      const gRef = `G${r}`, hRef = `H${r}`, iRef = `I${r}`, fRef = `F${r}`;
+      const step1 = getStep1Parts(item);
+      const step2 = getStep2Parts(item);
+
+      let h8formula;
+      if(step1.op==='mul') h8formula = `${gRef}*${step1.val}`;
+      else if(step1.op==='div') h8formula = `${gRef}/${step1.val}`;
+      else h8formula = `${gRef}`;
+      const step1Cell = ws.getCell(r, 8);
+      step1Cell.value = {formula: h8formula, result: Number(eff.vecow.toFixed(2))};
+      step1Cell.alignment = {horizontal:'center', vertical:'middle'};
+      step1Cell.font = {size:9, color:{argb:red}, bold:true};
+      borderCell(step1Cell);
+
+      let i9formula;
+      if(step2.op==='mul') i9formula = `${hRef}*${step2.val}`;
+      else if(step2.op==='div') i9formula = `${hRef}/${step2.val}`;
+      else i9formula = `${hRef}`;
+      const step2Cell = ws.getCell(r, 9);
+      step2Cell.value = {formula: i9formula, result: Number(eff.client.toFixed(2))};
+      step2Cell.alignment = {horizontal:'center', vertical:'middle'};
+      step2Cell.font = {size:9};
+      borderCell(step2Cell);
+
+      const totalCell = ws.getCell(r, 10);
+      totalCell.value = {formula: `${iRef}*${fRef}`, result: Number((eff.client*qty).toFixed(2))};
+      totalCell.alignment = {horizontal:'center', vertical:'middle'};
+      totalCell.font = {size:9, bold:true};
+      borderCell(totalCell);
+
       r++;
     });
     return r;
@@ -2034,7 +2119,7 @@ async function exportExcel(){
         vals = [idx+1, s.types, s.products, s.descs, 1, '—', Number(s.total.toFixed(2)), s.noteText];
       }
       vals.forEach((v,i)=>{
-        const c = ws.getCell(r, 11+i); c.value = v;
+        const c = ws.getCell(r, 12+i); c.value = v;
         c.alignment = {horizontal:(i===2||i===3||i===7)?'left':'center', vertical:'middle', wrapText:true};
         c.font = {size:9};
         borderCell(c);
@@ -2053,11 +2138,11 @@ async function exportExcel(){
 
   if(memItemsList.length || memRows.length){
     const sectionRow = Math.max(vecowNextRow, clientNextRow) + 1;
-    styleTitleRow(sectionRow, 1, 9, 'Memory & Storage');
-    styleTitleRow(sectionRow, 11, 18, 'Memory & Storage');
+    styleTitleRow(sectionRow, 1, 10, 'Memory & Storage');
+    styleTitleRow(sectionRow, 12, 19, 'Memory & Storage');
     const memHeadRow = sectionRow + 1;
-    tableHead(memHeadRow, 1, ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','Total (USD)'], headBlue);
-    tableHead(memHeadRow, 11, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
+    tableHead(memHeadRow, 1, ['No','PN','Type','Product','Description','Qty','Orig. $','Step 1 $','Step 2 $','Total $'], headBlue);
+    tableHead(memHeadRow, 12, ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'], 'FFC0530E');
     writeVecowRows(memHeadRow+1, memItemsList);
     writeClientRows(memHeadRow+1, memRows);
   }
