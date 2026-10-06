@@ -26,10 +26,21 @@
 body{
   margin:0; background:var(--paper); color:var(--ink);
   font-family:"Inter",-apple-system,"Segoe UI",sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased;
-  background-image:radial-gradient(circle at 15% 0%, rgba(176,141,63,.05), transparent 40%);
+  background-image:
+    radial-gradient(circle at 12% -5%, rgba(176,141,63,.09), transparent 38%),
+    radial-gradient(circle at 100% 0%, rgba(10,24,48,.06), transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(10,24,48,.045), transparent 35%),
+    linear-gradient(135deg, rgba(10,24,48,.015) 0%, transparent 50%),
+    repeating-linear-gradient(90deg, rgba(10,24,48,.025) 0px, rgba(10,24,48,.025) 1px, transparent 1px, transparent 64px);
+  background-attachment:fixed;
+  min-height:100vh;
+}
+body::before{
+  content:""; position:fixed; top:0; left:0; right:0; height:5px; z-index:10;
+  background:linear-gradient(90deg, var(--navy) 0%, var(--accent) 50%, var(--navy) 100%);
 }
 .display{font-family:"Manrope","Inter",sans-serif;}
-.wrap{max-width:1360px; margin:0 auto; padding:24px 24px 90px;}
+.wrap{max-width:1480px; margin:0 auto; padding:24px 32px 90px;}
 
 /* header */
 header.top{
@@ -739,49 +750,53 @@ async function initPersistence(){
   try{
     if(typeof supabase === 'undefined') throw new Error('supabase-js failed to load');
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const { data, error } = await sb.from('items').select('*').order('created_at', {ascending:true});
-    if(error) throw error;
+
+    // Fire all four initial reads in parallel (one round-trip instead of four
+    // sequential ones) — this is what made the first load feel slow.
+    const [itemsRes, metaRes, catRes, addonRes, qRes] = await Promise.all([
+      sb.from('items').select('*').order('created_at', {ascending:true}),
+      sb.from('quotation_meta').select('*').eq('id',1).single(),
+      sb.from('catalog').select('*').order('pn', {ascending:true}),
+      sb.from('addons').select('*').order('name', {ascending:true}),
+      sb.from('quotations').select('*').order('created_at', {ascending:false})
+    ]);
+
+    if(itemsRes.error) throw itemsRes.error;
     usingCloud = true;
-    items = (data||[]).map(mapRowToItem);
+    items = (itemsRes.data||[]).map(mapRowToItem);
     setSyncStatus('cloud');
     render();
 
-    const { data: metaData } = await sb.from('quotation_meta').select('*').eq('id',1).single();
-    if(metaData){
-      document.getElementById('qNo').value = metaData.q_no || '';
-      document.getElementById('qDate').value = metaData.q_date || '';
-      document.getElementById('qClient').value = metaData.q_client || '';
+    if(metaRes.data){
+      document.getElementById('qNo').value = metaRes.data.q_no || '';
+      document.getElementById('qDate').value = metaRes.data.q_date || '';
+      document.getElementById('qClient').value = metaRes.data.q_client || '';
     }
 
-    const { data: catData, error: catError } = await sb.from('catalog').select('*').order('pn', {ascending:true});
-    if(!catError){ catalog = (catData||[]).map(mapRowToCatalog); renderCatalog(); }
+    if(!catRes.error){ catalog = (catRes.data||[]).map(mapRowToCatalog); renderCatalog(); }
 
-    try{
-      const { data: addonData, error: addonError } = await sb.from('addons').select('*').order('name', {ascending:true});
-      if(addonError) throw addonError;
-      addons = (addonData||[]).map(mapRowToAddon);
+    if(!addonRes.error){
+      addons = (addonRes.data||[]).map(mapRowToAddon);
       usingCloudAddons = true;
       renderAddons();
       sb.channel('addons-sync')
         .on('postgres_changes', {event:'*', schema:'public', table:'addons'}, ()=>{ refetchAddons(); })
         .subscribe();
-    } catch(addonErr){
-      console.error('Add-ons table not available yet, falling back to local storage for add-ons:', addonErr);
+    } else {
+      console.error('Add-ons table not available yet, falling back to local storage for add-ons:', addonRes.error);
       usingCloudAddons = false;
       try{ const raw = localStorage.getItem('vecow_addons'); if(raw) addons = JSON.parse(raw); }catch(e){ addons = []; }
       renderAddons();
     }
 
-    try{
-      const { data: qData, error: qError } = await sb.from('quotations').select('*').order('created_at', {ascending:false});
-      if(qError) throw qError;
-      savedQuotations = (qData||[]).map(mapRowToQuotation);
+    if(!qRes.error){
+      savedQuotations = (qRes.data||[]).map(mapRowToQuotation);
       usingCloudQuotations = true;
       sb.channel('quotations-sync')
         .on('postgres_changes', {event:'*', schema:'public', table:'quotations'}, ()=>{ refetchQuotations(); })
         .subscribe();
-    } catch(qErr){
-      console.error('Quotations table not available yet, falling back to local storage for quotation history:', qErr);
+    } else {
+      console.error('Quotations table not available yet, falling back to local storage for quotation history:', qRes.error);
       usingCloudQuotations = false;
       try{ const raw = localStorage.getItem('vecow_quotations'); if(raw) savedQuotations = JSON.parse(raw); }catch(e){ savedQuotations = []; }
     }
