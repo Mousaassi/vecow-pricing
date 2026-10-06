@@ -27,11 +27,15 @@ body{
   margin:0; background:var(--paper); color:var(--ink);
   font-family:"Inter",-apple-system,"Segoe UI",sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased;
   background-image:
-    radial-gradient(circle at 12% -5%, rgba(176,141,63,.09), transparent 38%),
-    radial-gradient(circle at 100% 0%, rgba(10,24,48,.06), transparent 40%),
-    radial-gradient(circle at 0% 100%, rgba(10,24,48,.045), transparent 35%),
-    linear-gradient(135deg, rgba(10,24,48,.015) 0%, transparent 50%),
-    repeating-linear-gradient(90deg, rgba(10,24,48,.025) 0px, rgba(10,24,48,.025) 1px, transparent 1px, transparent 64px);
+    radial-gradient(circle at 10% -5%, rgba(176,141,63,.10), transparent 38%),
+    radial-gradient(circle at 100% 0%, rgba(10,24,48,.07), transparent 42%),
+    radial-gradient(circle at 0% 100%, rgba(10,24,48,.05), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(176,141,63,.05), transparent 36%),
+    repeating-linear-gradient(60deg, rgba(10,24,48,.045) 0px, rgba(10,24,48,.045) 1px, transparent 1px, transparent 88px),
+    repeating-linear-gradient(-60deg, rgba(10,24,48,.045) 0px, rgba(10,24,48,.045) 1px, transparent 1px, transparent 88px),
+    repeating-linear-gradient(0deg, rgba(10,24,48,.03) 0px, rgba(10,24,48,.03) 1px, transparent 1px, transparent 88px),
+    radial-gradient(circle, rgba(176,141,63,.3) 1.4px, transparent 1.6px);
+  background-size: auto, auto, auto, auto, auto, auto, auto, 88px 88px;
   background-attachment:fixed;
   min-height:100vh;
 }
@@ -40,7 +44,7 @@ body::before{
   background:linear-gradient(90deg, var(--navy) 0%, var(--accent) 50%, var(--navy) 100%);
 }
 .display{font-family:"Manrope","Inter",sans-serif;}
-.wrap{max-width:1480px; margin:0 auto; padding:24px 32px 90px;}
+.wrap{max-width:none; width:100%; margin:0 auto; padding:24px 44px 90px; box-sizing:border-box;}
 
 /* header */
 header.top{
@@ -218,6 +222,18 @@ html[data-theme="dark"]{
   color-scheme: dark;
 }
 html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator{ filter: invert(0.9) brightness(1.5); }
+html[data-theme="dark"] body{
+  background-image:
+    radial-gradient(circle at 10% -5%, rgba(212,181,104,.09), transparent 38%),
+    radial-gradient(circle at 100% 0%, rgba(154,165,187,.06), transparent 42%),
+    radial-gradient(circle at 0% 100%, rgba(154,165,187,.05), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(212,181,104,.06), transparent 36%),
+    repeating-linear-gradient(60deg, rgba(154,165,187,.08) 0px, rgba(154,165,187,.08) 1px, transparent 1px, transparent 88px),
+    repeating-linear-gradient(-60deg, rgba(154,165,187,.08) 0px, rgba(154,165,187,.08) 1px, transparent 1px, transparent 88px),
+    repeating-linear-gradient(0deg, rgba(154,165,187,.05) 0px, rgba(154,165,187,.05) 1px, transparent 1px, transparent 88px),
+    radial-gradient(circle, rgba(212,181,104,.5) 1.4px, transparent 1.6px);
+  background-size: auto, auto, auto, auto, auto, auto, auto, 88px 88px;
+}
 html[data-theme="ocean"]{
   --navy:#0b2a4a; --navy-2:#123a63; --accent:#1d9bd8; --accent-2:#5fc2ef;
   --paper:#eef6fb; --card:#ffffff; --input-bg:#ffffff; --line:#d7e7f1;
@@ -558,6 +574,15 @@ html[data-theme="burgundy"]{
         </div>
         <div class="f12"><label>Note (optional)</label><textarea id="cat_note" rows="2" placeholder="e.g. Supported quantities: Refer to Compatibility List. / Cannot pre-install / Custom hold-on bar required for RCX-3000"></textarea></div>
         <div class="f12" style="display:flex; justify-content:flex-end;"><button class="btn-primary" onclick="addCatalogItem()">+ Add to catalog</button></div>
+      </div>
+    </div>
+
+    <div class="card" id="ramQuickUpdateCard">
+      <h2><span class="dot"></span>⚡ Quick RAM &amp; Storage price update</h2>
+      <div class="hint" style="margin:0 0 14px;">RAM and Storage prices change roughly every two weeks. Update just these here — type the new price next to each item, then save once, instead of hunting through the full catalog below.</div>
+      <div id="ramQuickUpdateBody"></div>
+      <div class="toolbar" style="margin-top:14px;">
+        <button class="btn-primary" onclick="saveRamQuickPrices()">💾 Save all changes</button>
       </div>
     </div>
 
@@ -1409,6 +1434,53 @@ function renderCatalog(){
     `;
     body.appendChild(tr);
   });
+
+  renderRamQuickUpdate();
+}
+
+function renderRamQuickUpdate(){
+  const host = document.getElementById('ramQuickUpdateBody');
+  if(!host) return;
+  const ramItems = catalog.filter(c=>c.cat==='3a' || c.cat==='3b').sort((a,b)=>(a.product||'').localeCompare(b.product||''));
+  if(ramItems.length===0){
+    host.innerHTML = '<div class="empty-state">No RAM/Storage devices in the catalog yet — add them below with Type "RAM" or "Storage" first.</div>';
+    return;
+  }
+  host.innerHTML = `<div class="table-scroll"><table><thead><tr>
+      <th>Type</th><th>Product</th><th>Description</th><th>Current $</th><th>New $</th>
+    </tr></thead><tbody>` +
+    ramItems.map(c=>`<tr>
+      <td>${catLabel(c.cat)}</td>
+      <td class="left-al trunc" title="${escapeHtml(c.product||'')}">${escapeHtml(c.product||'')}</td>
+      <td class="left-al trunc" title="${escapeHtml(c.desc||'')}">${escapeHtml(c.desc||'')}</td>
+      <td class="num">${c.price!=null ? '$'+Number(c.price).toFixed(2) : '—'}</td>
+      <td class="num"><input type="number" min="0" step="0.01" id="ramq_${c.id}" placeholder="${c.price!=null?Number(c.price).toFixed(2):'0.00'}" style="width:100px;"></td>
+    </tr>`).join('') +
+    `</tbody></table></div>`;
+}
+
+async function saveRamQuickPrices(){
+  const ramItems = catalog.filter(c=>c.cat==='3a' || c.cat==='3b');
+  if(ramItems.length===0){ await appAlert('No RAM/Storage devices in the catalog yet.'); return; }
+  // Read every input's value up front — updateCatalogField() re-renders this
+  // panel (and wipes untouched inputs) as soon as the first change is saved,
+  // so all edits must be collected before any are applied.
+  const toSave = [];
+  ramItems.forEach(c=>{
+    const input = document.getElementById('ramq_'+c.id);
+    if(!input) return;
+    const raw = input.value;
+    if(raw==='') return;
+    const newPrice = Number(raw);
+    if(isNaN(newPrice) || newPrice < 0) return;
+    if(c.price===newPrice) return;
+    toSave.push({id:c.id, price:newPrice});
+  });
+  if(toSave.length===0){ toast('No price changes to save'); return; }
+  for(const item of toSave){
+    await updateCatalogField(item.id, 'price', item.price);
+  }
+  toast(`${toSave.length} price${toSave.length===1?'':'s'} updated`, 'success');
 }
 
 function toggleSelectAllItems(masterChk){
