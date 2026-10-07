@@ -567,6 +567,40 @@ html[data-theme="burgundy"]{
             <option value="WiFi Module">WiFi Module</option>
           </select>
         </div>
+        <div class="f12" id="catBrandWrap" style="display:none;">
+          <label>Manufacturer / sub-type</label>
+          <select id="cat_brand">
+            <option value="">— choose —</option>
+            <optgroup label="InnoDisk">
+              <option value="InnoDisk DDR3">InnoDisk DDR3</option>
+              <option value="InnoDisk DDR4">InnoDisk DDR4</option>
+              <option value="InnoDisk DDR5">InnoDisk DDR5</option>
+              <option value="InnoDisk M.2 PCIe">InnoDisk M.2 PCIe</option>
+              <option value="InnoDisk 2.5&quot; SSD">InnoDisk 2.5" SSD</option>
+              <option value="InnoDisk M.2 SATA">InnoDisk M.2 SATA</option>
+              <option value="InnoDisk mSATA">InnoDisk mSATA</option>
+              <option value="InnoDisk CFast">InnoDisk CFast</option>
+            </optgroup>
+            <optgroup label="Kingston">
+              <option value="Kingston DRAM">Kingston DRAM</option>
+              <option value="Kingston SSD">Kingston SSD</option>
+            </optgroup>
+            <optgroup label="Transcend">
+              <option value="Transcend DRAM">Transcend DRAM</option>
+              <option value="Transcend SSD">Transcend SSD</option>
+            </optgroup>
+            <optgroup label="TeamGroup">
+              <option value="TeamGroup DRAM">TeamGroup DRAM</option>
+              <option value="TeamGroup SSD">TeamGroup SSD</option>
+            </optgroup>
+            <optgroup label="GoldKey">
+              <option value="GoldKey-MIT">GoldKey-MIT</option>
+            </optgroup>
+            <option value="__other__">Other / type manually…</option>
+          </select>
+          <input id="cat_brand_custom" placeholder="Manufacturer / sub-type" style="display:none; margin-top:6px;">
+          <div class="hint">For organizing and filtering RAM/Storage only — never shown in the Vecow (PO) or Client tables, which always just say "RAM" or "Storage".</div>
+        </div>
         <div class="f12" id="catCompatWrap" style="display:none;">
           <label>Compatible device series (optional)</label>
           <input id="cat_compat" placeholder="e.g. ECX-3000, ECX-3200, EAC-4000 — comma separated">
@@ -589,9 +623,10 @@ html[data-theme="burgundy"]{
     <div class="card">
       <h2><span class="dot"></span>All devices</h2>
       <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()">
+      <div id="catalogBrandChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;"></div>
       <div class="table-scroll" style="margin-top:12px;">
         <table id="catalogTable">
-          <thead><tr><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Default price</th><th>Compatible series</th><th>Note</th><th></th></tr></thead>
+          <thead><tr><th>PN</th><th>Type</th><th>Brand / Sub-type</th><th>Product</th><th>Description</th><th>Default price</th><th>Compatible series</th><th>Note</th><th></th></tr></thead>
           <tbody id="catalogBody"></tbody>
         </table>
         <div id="catalogEmptyState" class="empty-state">🗂️ Catalog is empty — add your first device above.</div>
@@ -761,7 +796,7 @@ function mapRowToItem(row){
   };
 }
 function mapRowToCatalog(row){
-  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, note: row.note||'', compatSeries: row.compatible_series||'', createdAt: row.created_at };
+  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, note: row.note||'', compatSeries: row.compatible_series||'', brand: row.brand||'', createdAt: row.created_at };
 }
 function mapRowToAddon(row){
   return { id: row.id, pn: row.pn || '', name: row.name, desc: row.description || '', price: row.price, compatibleSeries: row.compatible_series || '', createdAt: row.created_at };
@@ -987,6 +1022,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const v = this.value;
     document.getElementById('catModTypeWrap').style.display = (v==='mod') ? '' : 'none';
     document.getElementById('catCompatWrap').style.display = (v==='acc') ? '' : 'none';
+    document.getElementById('catBrandWrap').style.display = (v==='3a' || v==='3b') ? '' : 'none';
+  });
+  document.getElementById('cat_brand').addEventListener('change', function(){
+    document.getElementById('cat_brand_custom').style.display = (this.value==='__other__') ? '' : 'none';
   });
   document.getElementById('in_pn').addEventListener('input', updatePnState);
   document.getElementById('in_pn').addEventListener('change', updatePnState);
@@ -1331,17 +1370,24 @@ async function addCatalogItem(){
     return;
   }
   const priceRaw = document.getElementById('cat_price').value;
+  const catVal = document.getElementById('cat_cat').value;
+  let brandVal = '';
+  if(catVal==='3a' || catVal==='3b'){
+    const brandSel = document.getElementById('cat_brand').value;
+    brandVal = brandSel==='__other__' ? document.getElementById('cat_brand_custom').value.trim() : brandSel;
+  }
   const data = {
-    pn: pn, cat: document.getElementById('cat_cat').value, product: product,
+    pn: pn, cat: catVal, product: product,
     desc: document.getElementById('cat_desc').value, price: priceRaw ? Number(priceRaw) : null,
     note: document.getElementById('cat_note').value.trim(),
     compatSeries: document.getElementById('cat_compat').value.trim(),
+    brand: brandVal,
     createdAt: Date.now()
   };
   if(usingCloud){
     const { error } = await sb.from('catalog').insert({
       pn: data.pn, cat: data.cat, product: data.product, description: data.desc, price: data.price, note: data.note,
-      compatible_series: data.compatSeries, created_at: data.createdAt
+      compatible_series: data.compatSeries, brand: data.brand, created_at: data.createdAt
     });
     if(error){
       console.error(error);
@@ -1358,10 +1404,13 @@ async function addCatalogItem(){
     saveLocalCatalog();
     renderCatalog();
   }
-  ['cat_pn','cat_product','cat_desc','cat_price','cat_note','cat_compat'].forEach(id=>document.getElementById(id).value='');
+  ['cat_pn','cat_product','cat_desc','cat_price','cat_note','cat_compat','cat_brand_custom'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cat_modType').value = '';
+  document.getElementById('cat_brand').value = '';
   document.getElementById('catModTypeWrap').style.display = 'none';
   document.getElementById('catCompatWrap').style.display = 'none';
+  document.getElementById('catBrandWrap').style.display = 'none';
+  document.getElementById('cat_brand_custom').style.display = 'none';
 }
 
 async function removeCatalogItem(id){
@@ -1375,7 +1424,7 @@ async function removeCatalogItem(id){
     renderCatalog();
   }
 }
-const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price', note:'note', compatSeries:'compatible_series' };
+const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price', note:'note', compatSeries:'compatible_series', brand:'brand' };
 async function updateCatalogField(id, field, value){
   if(usingCloud){
     const col = catFieldToColumn[field];
@@ -1389,26 +1438,44 @@ async function updateCatalogField(id, field, value){
     renderCatalog();
   }
 }
+let catalogBrandFilter = '';
 function renderCatalog(){
   populatePnDatalist();
   const body = document.getElementById('catalogBody');
   const empty = document.getElementById('catalogEmptyState');
   const term = (document.getElementById('catalogSearch').value||'').trim().toLowerCase();
-  const filtered = term ? catalog.filter(c=>
+
+  // Brand/sub-type filter chips — built from whatever brands exist in the
+  // catalog's RAM/Storage items, so this adapts automatically as brands are added.
+  const chipsHost = document.getElementById('catalogBrandChips');
+  if(chipsHost){
+    const brands = [...new Set(catalog.filter(c=>(c.cat==='3a'||c.cat==='3b') && c.brand).map(c=>c.brand))].sort();
+    if(brands.length===0){
+      chipsHost.innerHTML = '';
+    } else {
+      chipsHost.innerHTML = `<button type="button" class="tab-btn ${catalogBrandFilter===''?'active':''}" onclick="setCatalogBrandFilter('')" style="font-size:.76rem; padding:5px 12px;">All</button>` +
+        brands.map(b=>`<button type="button" class="tab-btn ${catalogBrandFilter===b?'active':''}" onclick="setCatalogBrandFilter('${escapeHtml(b).replace(/'/g,"\\'")}')" style="font-size:.76rem; padding:5px 12px;">${escapeHtml(b)}</button>`).join('');
+    }
+  }
+
+  let filtered = term ? catalog.filter(c=>
     (c.pn||'').toLowerCase().includes(term) ||
     (c.product||'').toLowerCase().includes(term) ||
     (c.desc||'').toLowerCase().includes(term) ||
-    (c.note||'').toLowerCase().includes(term)
+    (c.note||'').toLowerCase().includes(term) ||
+    (c.brand||'').toLowerCase().includes(term)
   ) : catalog;
+  if(catalogBrandFilter) filtered = filtered.filter(c=>c.brand===catalogBrandFilter);
 
   body.innerHTML = '';
   if(catalog.length===0){ empty.style.display='block'; empty.textContent = 'Catalog is empty — add your first device above.'; }
-  else if(filtered.length===0){ empty.style.display='block'; empty.textContent = 'No matches for this search.'; }
+  else if(filtered.length===0){ empty.style.display='block'; empty.textContent = 'No matches for this search/filter.'; }
   else { empty.style.display='none'; }
 
   filtered.forEach(c=>{
     const tr = document.createElement('tr');
     const hasNote = c.note && c.note.trim();
+    const isRamStorage = c.cat==='3a' || c.cat==='3b';
     tr.innerHTML = `
       <td>${escapeHtml(c.pn)}${hasNote ? ` <span title="${escapeHtml(c.note)}" style="cursor:help;">📝</span>` : ''}</td>
       <td>
@@ -1425,6 +1492,7 @@ function renderCatalog(){
           <option value="4" ${c.cat==='4'?'selected':''}>Outsourcing</option>
         </select>
       </td>
+      <td class="left-al">${isRamStorage ? `<input value="${escapeHtml(c.brand||'')}" placeholder="e.g. InnoDisk DDR4" style="min-width:140px;" onchange="updateCatalogField('${c.id}','brand',this.value)">` : '<span style="color:var(--ink-soft);">—</span>'}</td>
       <td class="left-al"><input value="${escapeHtml(c.product||'')}" style="min-width:130px;" onchange="updateCatalogField('${c.id}','product',this.value)"></td>
       <td class="left-al"><input value="${escapeHtml(c.desc||'')}" style="min-width:240px;" onchange="updateCatalogField('${c.id}','desc',this.value)"></td>
       <td class="num"><input type="number" min="0" step="0.01" value="${c.price!=null?c.price:''}" style="width:95px;" onchange="updateCatalogField('${c.id}','price',this.value?Number(this.value):null)"></td>
@@ -1437,26 +1505,44 @@ function renderCatalog(){
 
   renderRamQuickUpdate();
 }
+function setCatalogBrandFilter(brand){
+  catalogBrandFilter = brand;
+  renderCatalog();
+}
 
 function renderRamQuickUpdate(){
   const host = document.getElementById('ramQuickUpdateBody');
   if(!host) return;
-  const ramItems = catalog.filter(c=>c.cat==='3a' || c.cat==='3b').sort((a,b)=>(a.product||'').localeCompare(b.product||''));
+  const ramItems = catalog.filter(c=>c.cat==='3a' || c.cat==='3b')
+    .sort((a,b)=>(a.brand||'').localeCompare(b.brand||'') || (a.product||'').localeCompare(b.product||''));
   if(ramItems.length===0){
     host.innerHTML = '<div class="empty-state">No RAM/Storage devices in the catalog yet — add them below with Type "RAM" or "Storage" first.</div>';
     return;
   }
-  host.innerHTML = `<div class="table-scroll"><table><thead><tr>
-      <th>Type</th><th>Product</th><th>Description</th><th>Current $</th><th>New $</th>
-    </tr></thead><tbody>` +
-    ramItems.map(c=>`<tr>
+  // Group by brand/sub-type so a biweekly price sheet from one manufacturer
+  // can be scanned and updated as one block instead of hunting through a flat list.
+  const groups = {};
+  const groupOrder = [];
+  ramItems.forEach(c=>{
+    const key = c.brand || 'Unassigned';
+    if(!groups[key]){ groups[key] = []; groupOrder.push(key); }
+    groups[key].push(c);
+  });
+  let html = '<div class="table-scroll"><table><thead><tr>' +
+    '<th>Type</th><th>Product</th><th>Description</th><th>Current $</th><th>New $</th>' +
+    '</tr></thead><tbody>';
+  groupOrder.forEach(key=>{
+    html += `<tr><td colspan="5" style="text-align:left; font-weight:700; background:var(--paper); color:var(--ink-soft); font-size:.74rem; text-transform:uppercase; letter-spacing:.04em;">${escapeHtml(key)}</td></tr>`;
+    html += groups[key].map(c=>`<tr>
       <td>${catLabel(c.cat)}</td>
       <td class="left-al trunc" title="${escapeHtml(c.product||'')}">${escapeHtml(c.product||'')}</td>
       <td class="left-al trunc" title="${escapeHtml(c.desc||'')}">${escapeHtml(c.desc||'')}</td>
       <td class="num">${c.price!=null ? '$'+Number(c.price).toFixed(2) : '—'}</td>
       <td class="num"><input type="number" min="0" step="0.01" id="ramq_${c.id}" placeholder="${c.price!=null?Number(c.price).toFixed(2):'0.00'}" style="width:100px;"></td>
-    </tr>`).join('') +
-    `</tbody></table></div>`;
+    </tr>`).join('');
+  });
+  html += '</tbody></table></div>';
+  host.innerHTML = html;
 }
 
 async function saveRamQuickPrices(){
