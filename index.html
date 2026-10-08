@@ -383,10 +383,11 @@ html[data-theme="burgundy"]{
     <div class="card">
       <h2><span class="dot"></span>Add item</h2>
       <div class="pn-row">
-        <div class="pn-input-wrap">
+        <div class="pn-input-wrap" style="position:relative;">
           <label>PN or product name</label>
-          <input id="in_pn" list="pnDatalist" placeholder="Type a PN or device name to look it up…" autocomplete="off">
+          <input id="in_pn" list="pnDatalist" placeholder="Type a PN, product name, or a keyword like &quot;DDR4&quot;…" autocomplete="off">
           <datalist id="pnDatalist"></datalist>
+          <div id="pnSearchDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:50; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); max-height:280px; overflow-y:auto; margin-top:4px;"></div>
         </div>
         <div class="qty-wrap"><label>Qty</label><input id="in_qty" type="number" min="1" value="1"></div>
         <div class="price-wrap"><label>Current price (USD/unit)</label><input id="in_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
@@ -446,6 +447,14 @@ html[data-theme="burgundy"]{
         <div id="accessoriesCheckList" style="display:flex; flex-direction:column; gap:6px;"></div>
       </div>
 
+      <div id="cpuBox" style="display:none; margin-top:14px; padding:14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <div class="hint-title" id="cpuBoxTitle" style="font-size:.8rem; font-weight:700; color:var(--ink);">Compatible CPUs</div>
+          <label class="checkbox-line" style="margin-top:0;"><input type="checkbox" id="showAllCpusChk" onchange="renderCompatibleCpus()"> Show all CPUs</label>
+        </div>
+        <div id="cpuCheckList" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
       <div id="addonsBox" style="display:none; margin-top:14px; padding:14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);">
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
           <div class="hint-title" id="addonsBoxTitle" style="font-size:.8rem; font-weight:700; color:var(--ink);">Compatible add-ons</div>
@@ -455,17 +464,8 @@ html[data-theme="burgundy"]{
       </div>
 
       <details class="advanced" id="advancedDetails">
-        <summary>Advanced options — quantity tier, CPU divisor &amp; one-off add-on</summary>
+        <summary>Advanced options — CPU divisor &amp; one-off add-on</summary>
         <div class="form-grid" style="margin-top:12px;">
-          <div class="f3" id="tierWrap">
-            <label>Quantity tier</label>
-            <select id="in_tier">
-              <option value="auto">Auto by quantity</option>
-              <option value="0.7">Sample (÷0.7)</option>
-              <option value="0.75">50 PCS+ (÷0.75)</option>
-              <option value="0.8">100 PCS+ (÷0.8)</option>
-            </select>
-          </div>
           <div class="f3" id="cpuDivWrap" style="display:none;">
             <label>CPU divisor</label>
             <select id="in_cpuDiv"><option value="0.9">÷0.9</option><option value="0.8">÷0.8</option></select>
@@ -566,6 +566,9 @@ html[data-theme="burgundy"]{
             <option value="5G RedCap Module">5G RedCap Module</option>
             <option value="WiFi Module">WiFi Module</option>
           </select>
+        </div>
+        <div class="f12" id="catCpuBuiltinWrap" style="display:none;">
+          <label class="checkbox-line" style="margin-top:0;"><input type="checkbox" id="cat_cpuBuiltin"> This system has a fixed/built-in processor (e.g. NVIDIA Jetson) — don't suggest a separate CPU for it</label>
         </div>
         <div class="f12" id="catBrandWrap" style="display:none;">
           <label>Manufacturer / sub-type</label>
@@ -796,7 +799,7 @@ function mapRowToItem(row){
   };
 }
 function mapRowToCatalog(row){
-  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, note: row.note||'', compatSeries: row.compatible_series||'', brand: row.brand||'', createdAt: row.created_at };
+  return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, note: row.note||'', compatSeries: row.compatible_series||'', brand: row.brand||'', cpuBuiltin: !!row.cpu_builtin, createdAt: row.created_at };
 }
 function mapRowToAddon(row){
   return { id: row.id, pn: row.pn || '', name: row.name, desc: row.description || '', price: row.price, compatibleSeries: row.compatible_series || '', createdAt: row.created_at };
@@ -1023,12 +1026,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('catModTypeWrap').style.display = (v==='mod') ? '' : 'none';
     document.getElementById('catCompatWrap').style.display = (v==='acc') ? '' : 'none';
     document.getElementById('catBrandWrap').style.display = (v==='3a' || v==='3b') ? '' : 'none';
+    document.getElementById('catCpuBuiltinWrap').style.display = (v==='1a' || v==='1') ? '' : 'none';
   });
   document.getElementById('cat_brand').addEventListener('change', function(){
     document.getElementById('cat_brand_custom').style.display = (this.value==='__other__') ? '' : 'none';
   });
   document.getElementById('in_pn').addEventListener('input', updatePnState);
   document.getElementById('in_pn').addEventListener('change', updatePnState);
+  document.getElementById('in_pn').addEventListener('blur', function(){
+    // slight delay so a click on a dropdown row registers before it's hidden
+    setTimeout(()=>{ document.getElementById('pnSearchDropdown').style.display='none'; }, 150);
+  });
+  document.getElementById('in_pn').addEventListener('focus', function(){
+    renderPnSearchDropdown(this.value.trim());
+  });
   document.getElementById('in_product').addEventListener('input', refreshCompatibilityBoxes);
   document.getElementById('auth_email').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); });
   document.getElementById('auth_password').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); });
@@ -1037,7 +1048,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 function updateTierVisibility(){
   const cat = document.getElementById('in_cat').value;
-  document.getElementById('tierWrap').style.display = (cat==='1a' || cat==='1b' || cat==='gc' || cat==='acc' || cat==='2' || cat==='mod') ? '' : 'none';
   document.getElementById('cpuDivWrap').style.display = (cat==='cpu') ? '' : 'none';
   document.getElementById('step1Wrap').style.display = (cat==='1a' || cat==='1b') ? '' : 'none';
 }
@@ -1151,22 +1161,27 @@ function populatePnDatalist(){
   }).join('');
 }
 let pendingCatalogNote = '';
+let currentCatalogMatch = null;
 function updatePnState(){
   const pnVal = document.getElementById('in_pn').value.trim();
   const preview = document.getElementById('pnPreview');
   const newFields = document.getElementById('newDeviceFields');
   const noteBadge = document.getElementById('pnPreviewNoteBadge');
+  renderPnSearchDropdown(pnVal);
   if(!pnVal){
     preview.style.display='none'; newFields.style.display='none';
     document.getElementById('addonsBox').style.display='none';
     document.getElementById('accessoriesBox').style.display='none';
+    document.getElementById('cpuBox').style.display='none';
     pendingCatalogNote = '';
+    currentCatalogMatch = null;
     return;
   }
   const match = catalog.find(c=>
     (c.pn||'').toLowerCase()===pnVal.toLowerCase() ||
     (c.product||'').toLowerCase()===pnVal.toLowerCase()
   );
+  currentCatalogMatch = match || null;
   if(match){
     const validCats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
     const matchCat = validCats.includes(match.cat) ? match.cat : '2';
@@ -1199,6 +1214,40 @@ function updatePnState(){
   }
   refreshCompatibilityBoxes();
 }
+function renderPnSearchDropdown(term){
+  const dd = document.getElementById('pnSearchDropdown');
+  const q = (term||'').trim().toLowerCase();
+  if(q.length < 2){ dd.style.display='none'; dd.innerHTML=''; return; }
+  // Exact PN/product match already drives the normal preview flow above —
+  // the dropdown here is for fuzzy/keyword browsing (e.g. "DDR4", a device name fragment).
+  const results = catalog.filter(c=>
+    (c.pn||'').toLowerCase().includes(q) ||
+    (c.product||'').toLowerCase().includes(q) ||
+    (c.desc||'').toLowerCase().includes(q) ||
+    (c.brand||'').toLowerCase().includes(q)
+  ).slice(0, 25);
+  if(results.length===0){ dd.style.display='none'; dd.innerHTML=''; return; }
+  dd.innerHTML = results.map(c=>{
+    const priceTxt = (c.price!=null && c.price!=='') ? '$'+Number(c.price).toFixed(2) : '—';
+    return `<div class="pn-search-row" style="padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--line); font-size:.82rem;"
+        onmousedown="selectPnSearchResult('${c.id}')"
+        onmouseover="this.style.background='var(--hover, rgba(0,0,0,.04))'" onmouseout="this.style.background=''">
+      <div style="display:flex; justify-content:space-between; gap:8px;">
+        <strong>${escapeHtml(c.product||'')}</strong>
+        <span style="color:var(--muted,#888);">${priceTxt}</span>
+      </div>
+      <div style="color:var(--muted,#888); font-size:.76rem;">${escapeHtml(catLabel(c.cat))}${c.pn?' · '+escapeHtml(c.pn):''}${c.desc?' · '+escapeHtml(c.desc):''}</div>
+    </div>`;
+  }).join('');
+  dd.style.display = 'block';
+}
+function selectPnSearchResult(id){
+  const c = catalog.find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById('in_pn').value = c.pn || c.product || '';
+  document.getElementById('pnSearchDropdown').style.display = 'none';
+  updatePnState();
+}
 async function maybeSaveNewPnToCatalog(pn, cat, product, desc, price, compatSeries){
   if(!pn || pn==='N/A') return;
   if(catalog.some(c=>(c.pn||'').toLowerCase()===pn.toLowerCase())) return;
@@ -1227,6 +1276,7 @@ function addonMatchesProduct(addon, productName){ return seriesMatches(addon.com
 function refreshCompatibilityBoxes(){
   renderAddonCheckboxes();
   renderCompatibleAccessories();
+  renderCompatibleCpus();
 }
 
 function renderAddonCheckboxes(){
@@ -1234,9 +1284,11 @@ function renderAddonCheckboxes(){
   const list = document.getElementById('addonsCheckList');
   const title = document.getElementById('addonsBoxTitle');
   const productName = document.getElementById('in_product').value.trim();
-  if(!productName || addons.length===0){ box.style.display='none'; return; }
-
   const showAll = document.getElementById('showAllAddonsChk').checked;
+  // Only suggest add-ons for a device actually recognized from the catalog —
+  // typing an unknown/new device name must not surface "universal" matches.
+  if(!productName || addons.length===0 || (!currentCatalogMatch && !showAll)){ box.style.display='none'; return; }
+
   const matched = addons.filter(a=> showAll || addonMatchesProduct(a, productName));
 
   title.textContent = showAll ? 'All add-ons' : `Compatible add-ons for ${productName}`;
@@ -1259,9 +1311,11 @@ function renderCompatibleAccessories(){
   const title = document.getElementById('accessoriesBoxTitle');
   const productName = document.getElementById('in_product').value.trim();
   const accessoryCatalog = catalog.filter(c=>c.cat==='acc');
-  if(!productName || accessoryCatalog.length===0){ box.style.display='none'; return; }
-
   const showAll = document.getElementById('showAllAccessoriesChk').checked;
+  // Only suggest accessories for a device actually recognized from the catalog —
+  // typing an unknown/new device name must not surface "universal" matches.
+  if(!productName || accessoryCatalog.length===0 || (!currentCatalogMatch && !showAll)){ box.style.display='none'; return; }
+
   const matched = accessoryCatalog.filter(a=> showAll || seriesMatches(a.compatSeries, productName));
 
   title.textContent = showAll ? 'All accessories' : `Compatible accessories for ${productName}`;
@@ -1272,6 +1326,39 @@ function renderCompatibleAccessories(){
       <label class="checkbox-line" style="margin-top:0;">
         <input type="checkbox" class="accessory-chk" value="${a.id}">
         <span>${escapeHtml(a.product||'')}${a.pn?' · '+escapeHtml(a.pn):''} — $${a.price!=null?Number(a.price).toFixed(2):'—'}${a.desc?' · '+escapeHtml(a.desc):''}</span>
+      </label>
+    `).join('');
+  }
+  box.style.display = 'block';
+}
+
+function renderCompatibleCpus(){
+  const box = document.getElementById('cpuBox');
+  const list = document.getElementById('cpuCheckList');
+  const title = document.getElementById('cpuBoxTitle');
+  const productName = document.getElementById('in_product').value.trim();
+  const cpuCatalog = catalog.filter(c=>c.cat==='cpu');
+  const showAll = document.getElementById('showAllCpusChk').checked;
+  // CPU suggestions only make sense for a recognized system device, and only
+  // when that system doesn't already come with a fixed/built-in processor
+  // (e.g. NVIDIA Jetson-based systems) — those never get a CPU picker at all.
+  const isSystem = currentCatalogMatch && (currentCatalogMatch.cat==='1a' || currentCatalogMatch.cat==='1');
+  const cpuBuiltin = currentCatalogMatch && currentCatalogMatch.cpuBuiltin;
+  if(!productName || cpuCatalog.length===0 || !isSystem || cpuBuiltin || (!currentCatalogMatch && !showAll)){
+    box.style.display='none';
+    return;
+  }
+
+  const matched = cpuCatalog.filter(c=> showAll || seriesMatches(c.compatSeries, productName));
+
+  title.textContent = showAll ? 'All CPUs' : `Compatible CPUs for ${productName}`;
+  if(matched.length===0){
+    list.innerHTML = `<div class="hint" style="margin:0;">No compatible CPUs found for this device. Check "Show all CPUs" to pick manually.</div>`;
+  } else {
+    list.innerHTML = matched.map(c=>`
+      <label class="checkbox-line" style="margin-top:0;">
+        <input type="checkbox" class="cpu-chk" value="${c.id}">
+        <span>${escapeHtml(c.product||'')}${c.pn?' · '+escapeHtml(c.pn):''} — $${c.price!=null?Number(c.price).toFixed(2):'—'}${c.desc?' · '+escapeHtml(c.desc):''}</span>
       </label>
     `).join('');
   }
@@ -1376,18 +1463,20 @@ async function addCatalogItem(){
     const brandSel = document.getElementById('cat_brand').value;
     brandVal = brandSel==='__other__' ? document.getElementById('cat_brand_custom').value.trim() : brandSel;
   }
+  const cpuBuiltinVal = (catVal==='1a' || catVal==='1') ? document.getElementById('cat_cpuBuiltin').checked : false;
   const data = {
     pn: pn, cat: catVal, product: product,
     desc: document.getElementById('cat_desc').value, price: priceRaw ? Number(priceRaw) : null,
     note: document.getElementById('cat_note').value.trim(),
     compatSeries: document.getElementById('cat_compat').value.trim(),
     brand: brandVal,
+    cpuBuiltin: cpuBuiltinVal,
     createdAt: Date.now()
   };
   if(usingCloud){
     const { error } = await sb.from('catalog').insert({
       pn: data.pn, cat: data.cat, product: data.product, description: data.desc, price: data.price, note: data.note,
-      compatible_series: data.compatSeries, brand: data.brand, created_at: data.createdAt
+      compatible_series: data.compatSeries, brand: data.brand, cpu_builtin: data.cpuBuiltin, created_at: data.createdAt
     });
     if(error){
       console.error(error);
@@ -1407,10 +1496,12 @@ async function addCatalogItem(){
   ['cat_pn','cat_product','cat_desc','cat_price','cat_note','cat_compat','cat_brand_custom'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cat_modType').value = '';
   document.getElementById('cat_brand').value = '';
+  document.getElementById('cat_cpuBuiltin').checked = false;
   document.getElementById('catModTypeWrap').style.display = 'none';
   document.getElementById('catCompatWrap').style.display = 'none';
   document.getElementById('catBrandWrap').style.display = 'none';
   document.getElementById('cat_brand_custom').style.display = 'none';
+  document.getElementById('catCpuBuiltinWrap').style.display = 'none';
 }
 
 async function removeCatalogItem(id){
@@ -1424,7 +1515,7 @@ async function removeCatalogItem(id){
     renderCatalog();
   }
 }
-const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price', note:'note', compatSeries:'compatible_series', brand:'brand' };
+const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price', note:'note', compatSeries:'compatible_series', brand:'brand', cpuBuiltin:'cpu_builtin' };
 async function updateCatalogField(id, field, value){
   if(usingCloud){
     const col = catFieldToColumn[field];
@@ -1477,7 +1568,7 @@ function renderCatalog(){
     const hasNote = c.note && c.note.trim();
     const isRamStorage = c.cat==='3a' || c.cat==='3b';
     tr.innerHTML = `
-      <td>${escapeHtml(c.pn)}${hasNote ? ` <span title="${escapeHtml(c.note)}" style="cursor:help;">📝</span>` : ''}</td>
+      <td>${escapeHtml(c.pn)}${hasNote ? ` <span title="${escapeHtml(c.note)}" style="cursor:help;">📝</span>` : ''}${c.cpuBuiltin ? ` <span title="Fixed/built-in processor — no separate CPU suggested" style="cursor:help;">🔒</span>` : ''}</td>
       <td>
         <select onchange="updateCatalogField('${c.id}','cat',this.value)" style="min-width:150px;">
           <option value="1a" ${c.cat==='1a'?'selected':''}>Vecow System</option>
@@ -1809,8 +1900,12 @@ function resetAddItemForm(){
   document.getElementById('newDeviceFields').style.display='none';
   document.getElementById('addonsBox').style.display='none';
   document.getElementById('accessoriesBox').style.display='none';
+  document.getElementById('cpuBox').style.display='none';
   document.getElementById('showAllAddonsChk').checked=false;
   document.getElementById('showAllAccessoriesChk').checked=false;
+  document.getElementById('showAllCpusChk').checked=false;
+  document.getElementById('pnSearchDropdown').style.display='none';
+  currentCatalogMatch = null;
 }
 
 async function addItem(){
@@ -1843,7 +1938,7 @@ async function addItem(){
     pn: pn, cat: cat,
     isIntel: false,
     cpuDiv: document.getElementById('in_cpuDiv').value,
-    tier: document.getElementById('in_tier').value,
+    tier: 'auto',
     step1Op: (cat==='1a'||cat==='1b') ? (document.getElementById('in_step1Op').value || 'mul') : null,
     step1Val: (cat==='1a'||cat==='1b') ? (Number(document.getElementById('in_step1Val').value) || 0.9) : null,
     step2Op: null, step2Val: null,
@@ -1882,6 +1977,14 @@ async function addItem(){
     const c = catalog.find(x=>x.id===id);
     if(!c) continue;
     await addAddonAsQuotationItem(c.pn || 'N/A', c.product, c.desc, c.price||0, base.qty, base.tier, 'acc');
+  }
+
+  // selected compatible CPUs (from catalog) -> each becomes its own line item
+  const checkedCpuIds = Array.from(document.querySelectorAll('.cpu-chk:checked')).map(el=>el.value);
+  for(const id of checkedCpuIds){
+    const c = catalog.find(x=>x.id===id);
+    if(!c) continue;
+    await addAddonAsQuotationItem(c.pn || 'N/A', c.product, c.desc, c.price||0, base.qty, base.tier, 'cpu');
   }
 
   // selected compatible/general add-ons -> each becomes its own line item with the real add-on PN
