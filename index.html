@@ -385,8 +385,7 @@ html[data-theme="burgundy"]{
       <div class="pn-row">
         <div class="pn-input-wrap" style="position:relative;">
           <label>PN or product name</label>
-          <input id="in_pn" list="pnDatalist" placeholder="Type a PN, product name, or a keyword like &quot;DDR4&quot;…" autocomplete="off">
-          <datalist id="pnDatalist"></datalist>
+          <input id="in_pn" placeholder="Type a PN, product name, or a keyword like &quot;DDR4&quot;…" autocomplete="off">
           <div id="pnSearchDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:50; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); max-height:280px; overflow-y:auto; margin-top:4px;"></div>
         </div>
         <div class="qty-wrap"><label>Qty</label><input id="in_qty" type="number" min="1" value="1"></div>
@@ -463,32 +462,6 @@ html[data-theme="burgundy"]{
         <div id="addonsCheckList" style="display:flex; flex-direction:column; gap:6px;"></div>
       </div>
 
-      <details class="advanced" id="advancedDetails">
-        <summary>Advanced options — CPU divisor &amp; one-off add-on</summary>
-        <div class="form-grid" style="margin-top:12px;">
-          <div class="f3" id="cpuDivWrap" style="display:none;">
-            <label>CPU divisor</label>
-            <select id="in_cpuDiv"><option value="0.9">÷0.9</option><option value="0.8">÷0.8</option></select>
-          </div>
-          <div class="f3" id="step1Wrap" style="display:none;">
-            <label>Step 1 (Vecow cost)</label>
-            <div style="display:flex; gap:6px;">
-              <select id="in_step1Op" style="flex:1;">
-                <option value="mul">× Multiply</option>
-                <option value="div">÷ Divide</option>
-              </select>
-              <input id="in_step1Val" type="number" min="0" step="0.01" value="0.9" style="flex:1; min-width:0;">
-            </div>
-          </div>
-        </div>
-        <div class="form-grid" style="margin-top:12px;">
-          <div class="f2"><label>One-off add-on PN (optional)</label><input id="in_oneoff_pn" placeholder="PN"></div>
-          <div class="f4"><label>One-off add-on name</label><input id="in_oneoff_name" placeholder="e.g. Custom bracket"></div>
-          <div class="f4"><label>Description (optional)</label><input id="in_oneoff_desc" placeholder="Notes / specs"></div>
-          <div class="f2"><label>Price (USD/unit)</label><input id="in_oneoff_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
-        </div>
-        <div class="hint">One-off add-ons apply only to this line item and are not saved to the Add-ons catalog.</div>
-      </details>
     </div>
 
     <div class="card">
@@ -614,22 +587,16 @@ html[data-theme="burgundy"]{
       </div>
     </div>
 
-    <div class="card" id="ramQuickUpdateCard">
-      <h2><span class="dot"></span>⚡ Quick RAM &amp; Storage price update</h2>
-      <div class="hint" style="margin:0 0 14px;">RAM and Storage prices change roughly every two weeks. Update just these here — type the new price next to each item, then save once, instead of hunting through the full catalog below.</div>
-      <div id="ramQuickUpdateBody"></div>
-      <div class="toolbar" style="margin-top:14px;">
-        <button class="btn-primary" onclick="saveRamQuickPrices()">💾 Save all changes</button>
-      </div>
-    </div>
-
     <div class="card">
       <h2><span class="dot"></span>All devices</h2>
       <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()">
       <div id="catalogBrandChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;"></div>
+      <div class="toolbar" style="margin-top:10px;">
+        <button class="btn-danger" onclick="deleteSelectedCatalogItems()">🗑 Delete selected</button>
+      </div>
       <div class="table-scroll" style="margin-top:12px;">
         <table id="catalogTable">
-          <thead><tr><th>PN</th><th>Type</th><th>Brand / Sub-type</th><th>Product</th><th>Description</th><th>Default price</th><th>Compatible series</th><th>Note</th><th></th></tr></thead>
+          <thead><tr><th><input type="checkbox" id="catalogSelectAllChk" onchange="toggleSelectAllCatalog(this)"></th><th>PN</th><th>Type</th><th>Brand / Sub-type</th><th>Product</th><th>Description</th><th>Default price</th><th>Compatible series</th><th>Note</th><th></th></tr></thead>
           <tbody id="catalogBody"></tbody>
         </table>
         <div id="catalogEmptyState" class="empty-state">🗂️ Catalog is empty — add your first device above.</div>
@@ -1019,7 +986,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('modTypeWrap').style.display = (v==='mod') ? '' : 'none';
     document.getElementById('inCompatWrap').style.display = (v==='acc') ? '' : 'none';
     updateTierVisibility();
-    if(v==='cpu'){ document.getElementById('advancedDetails').open = true; }
   });
   document.getElementById('cat_cat').addEventListener('change', function(){
     const v = this.value;
@@ -1047,9 +1013,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 function updateTierVisibility(){
-  const cat = document.getElementById('in_cat').value;
-  document.getElementById('cpuDivWrap').style.display = (cat==='cpu') ? '' : 'none';
-  document.getElementById('step1Wrap').style.display = (cat==='1a' || cat==='1b') ? '' : 'none';
+  // Advanced options (CPU divisor / Step 1 override / one-off add-on) were removed —
+  // Step 1 & Step 2 are now always edited per-row in the items table instead.
 }
 
 /* ============ pricing engine ============ */
@@ -1154,11 +1119,8 @@ function calcBreakdown(item){
 
 /* ============ PN lookup / quick add flow ============ */
 function populatePnDatalist(){
-  const dl = document.getElementById('pnDatalist');
-  dl.innerHTML = catalog.map(c=>{
-    const flag = (c.note && c.note.trim()) ? '📝 ' : '';
-    return `<option value="${escapeHtml(c.pn)}">${flag}${escapeHtml(c.product||'')}</option>`;
-  }).join('');
+  // native <datalist> removed in favor of the custom search dropdown (avoids two
+  // overlapping suggestion lists); kept as a no-op so existing call sites stay safe.
 }
 let pendingCatalogNote = '';
 let currentCatalogMatch = null;
@@ -1290,10 +1252,13 @@ function renderAddonCheckboxes(){
   if(!productName || addons.length===0 || (!currentCatalogMatch && !showAll)){ box.style.display='none'; return; }
 
   const matched = addons.filter(a=> showAll || addonMatchesProduct(a, productName));
+  // Nothing actually compatible with this device — stay hidden instead of showing an
+  // empty placeholder box (it should only appear once there's something to offer).
+  if(matched.length===0 && !showAll){ box.style.display='none'; return; }
 
   title.textContent = showAll ? 'All add-ons' : `Compatible add-ons for ${productName}`;
   if(matched.length===0){
-    list.innerHTML = `<div class="hint" style="margin:0;">No compatible add-ons found for this device. Check "Show all add-ons" to pick manually.</div>`;
+    list.innerHTML = `<div class="hint" style="margin:0;">No add-ons in the catalog yet.</div>`;
   } else {
     list.innerHTML = matched.map(a=>`
       <label class="checkbox-line" style="margin-top:0;">
@@ -1317,10 +1282,13 @@ function renderCompatibleAccessories(){
   if(!productName || accessoryCatalog.length===0 || (!currentCatalogMatch && !showAll)){ box.style.display='none'; return; }
 
   const matched = accessoryCatalog.filter(a=> showAll || seriesMatches(a.compatSeries, productName));
+  // Nothing actually compatible with this device — stay hidden instead of showing an
+  // empty placeholder box (it should only appear once there's something to offer).
+  if(matched.length===0 && !showAll){ box.style.display='none'; return; }
 
   title.textContent = showAll ? 'All accessories' : `Compatible accessories for ${productName}`;
   if(matched.length===0){
-    list.innerHTML = `<div class="hint" style="margin:0;">No compatible accessories found for this device. Check "Show all accessories" to pick manually.</div>`;
+    list.innerHTML = `<div class="hint" style="margin:0;">No accessories in the catalog yet.</div>`;
   } else {
     list.innerHTML = matched.map(a=>`
       <label class="checkbox-line" style="margin-top:0;">
@@ -1350,10 +1318,13 @@ function renderCompatibleCpus(){
   }
 
   const matched = cpuCatalog.filter(c=> showAll || seriesMatches(c.compatSeries, productName));
+  // Nothing actually compatible with this device — stay hidden instead of showing an
+  // empty placeholder box (it should only appear once there's something to offer).
+  if(matched.length===0 && !showAll){ box.style.display='none'; return; }
 
   title.textContent = showAll ? 'All CPUs' : `Compatible CPUs for ${productName}`;
   if(matched.length===0){
-    list.innerHTML = `<div class="hint" style="margin:0;">No compatible CPUs found for this device. Check "Show all CPUs" to pick manually.</div>`;
+    list.innerHTML = `<div class="hint" style="margin:0;">No CPUs in the catalog yet.</div>`;
   } else {
     list.innerHTML = matched.map(c=>`
       <label class="checkbox-line" style="margin-top:0;">
@@ -1515,6 +1486,25 @@ async function removeCatalogItem(id){
     renderCatalog();
   }
 }
+function toggleSelectAllCatalog(masterChk){
+  document.querySelectorAll('.catalog-select-chk').forEach(chk=>{ chk.checked = masterChk.checked; });
+}
+async function deleteSelectedCatalogItems(){
+  const ids = Array.from(document.querySelectorAll('.catalog-select-chk:checked')).map(el=>el.value);
+  if(ids.length===0){ await appAlert('Tick at least one device first (or use the checkbox in the header to select all).'); return; }
+  if(!(await appConfirm(`Delete ${ids.length} device${ids.length===1?'':'s'} from the catalog? This cannot be undone.`))) return;
+  if(usingCloud){
+    const { error } = await sb.from('catalog').delete().in('id', ids);
+    if(error){ console.error(error); await appAlert('Could not delete from the cloud catalog.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
+  } else {
+    const idSet = new Set(ids);
+    catalog = catalog.filter(c=>!idSet.has(c.id));
+    saveLocalCatalog();
+    renderCatalog();
+  }
+  document.getElementById('catalogSelectAllChk').checked = false;
+  toast(`${ids.length} device${ids.length===1?'':'s'} deleted`, 'success');
+}
 const catFieldToColumn = { cat:'cat', product:'product', desc:'description', price:'price', note:'note', compatSeries:'compatible_series', brand:'brand', cpuBuiltin:'cpu_builtin' };
 async function updateCatalogField(id, field, value){
   if(usingCloud){
@@ -1568,6 +1558,7 @@ function renderCatalog(){
     const hasNote = c.note && c.note.trim();
     const isRamStorage = c.cat==='3a' || c.cat==='3b';
     tr.innerHTML = `
+      <td><input type="checkbox" class="catalog-select-chk" value="${c.id}"></td>
       <td>${escapeHtml(c.pn)}${hasNote ? ` <span title="${escapeHtml(c.note)}" style="cursor:help;">📝</span>` : ''}${c.cpuBuiltin ? ` <span title="Fixed/built-in processor — no separate CPU suggested" style="cursor:help;">🔒</span>` : ''}</td>
       <td>
         <select onchange="updateCatalogField('${c.id}','cat',this.value)" style="min-width:150px;">
@@ -1593,71 +1584,10 @@ function renderCatalog(){
     `;
     body.appendChild(tr);
   });
-
-  renderRamQuickUpdate();
 }
 function setCatalogBrandFilter(brand){
   catalogBrandFilter = brand;
   renderCatalog();
-}
-
-function renderRamQuickUpdate(){
-  const host = document.getElementById('ramQuickUpdateBody');
-  if(!host) return;
-  const ramItems = catalog.filter(c=>c.cat==='3a' || c.cat==='3b')
-    .sort((a,b)=>(a.brand||'').localeCompare(b.brand||'') || (a.product||'').localeCompare(b.product||''));
-  if(ramItems.length===0){
-    host.innerHTML = '<div class="empty-state">No RAM/Storage devices in the catalog yet — add them below with Type "RAM" or "Storage" first.</div>';
-    return;
-  }
-  // Group by brand/sub-type so a biweekly price sheet from one manufacturer
-  // can be scanned and updated as one block instead of hunting through a flat list.
-  const groups = {};
-  const groupOrder = [];
-  ramItems.forEach(c=>{
-    const key = c.brand || 'Unassigned';
-    if(!groups[key]){ groups[key] = []; groupOrder.push(key); }
-    groups[key].push(c);
-  });
-  let html = '<div class="table-scroll"><table><thead><tr>' +
-    '<th>Type</th><th>Product</th><th>Description</th><th>Current $</th><th>New $</th>' +
-    '</tr></thead><tbody>';
-  groupOrder.forEach(key=>{
-    html += `<tr><td colspan="5" style="text-align:left; font-weight:700; background:var(--paper); color:var(--ink-soft); font-size:.74rem; text-transform:uppercase; letter-spacing:.04em;">${escapeHtml(key)}</td></tr>`;
-    html += groups[key].map(c=>`<tr>
-      <td>${catLabel(c.cat)}</td>
-      <td class="left-al trunc" title="${escapeHtml(c.product||'')}">${escapeHtml(c.product||'')}</td>
-      <td class="left-al trunc" title="${escapeHtml(c.desc||'')}">${escapeHtml(c.desc||'')}</td>
-      <td class="num">${c.price!=null ? '$'+Number(c.price).toFixed(2) : '—'}</td>
-      <td class="num"><input type="number" min="0" step="0.01" id="ramq_${c.id}" placeholder="${c.price!=null?Number(c.price).toFixed(2):'0.00'}" style="width:100px;"></td>
-    </tr>`).join('');
-  });
-  html += '</tbody></table></div>';
-  host.innerHTML = html;
-}
-
-async function saveRamQuickPrices(){
-  const ramItems = catalog.filter(c=>c.cat==='3a' || c.cat==='3b');
-  if(ramItems.length===0){ await appAlert('No RAM/Storage devices in the catalog yet.'); return; }
-  // Read every input's value up front — updateCatalogField() re-renders this
-  // panel (and wipes untouched inputs) as soon as the first change is saved,
-  // so all edits must be collected before any are applied.
-  const toSave = [];
-  ramItems.forEach(c=>{
-    const input = document.getElementById('ramq_'+c.id);
-    if(!input) return;
-    const raw = input.value;
-    if(raw==='') return;
-    const newPrice = Number(raw);
-    if(isNaN(newPrice) || newPrice < 0) return;
-    if(c.price===newPrice) return;
-    toSave.push({id:c.id, price:newPrice});
-  });
-  if(toSave.length===0){ toast('No price changes to save'); return; }
-  for(const item of toSave){
-    await updateCatalogField(item.id, 'price', item.price);
-  }
-  toast(`${toSave.length} price${toSave.length===1?'':'s'} updated`, 'success');
 }
 
 function toggleSelectAllItems(masterChk){
@@ -1889,10 +1819,8 @@ function renderDashboard(){
 
 /* ============ item CRUD ============ */
 function resetAddItemForm(){
-  ['in_pn','in_product','in_desc','in_price','in_compat','in_oneoff_pn','in_oneoff_name','in_oneoff_desc','in_oneoff_price'].forEach(id=>document.getElementById(id).value='');
+  ['in_pn','in_product','in_desc','in_price','in_compat'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('in_qty').value=1;
-  document.getElementById('in_step1Op').value='mul';
-  document.getElementById('in_step1Val').value='0.9';
   document.getElementById('in_modType').value='';
   document.getElementById('modTypeWrap').style.display='none';
   document.getElementById('inCompatWrap').style.display='none';
@@ -1937,10 +1865,9 @@ async function addItem(){
   const base = {
     pn: pn, cat: cat,
     isIntel: false,
-    cpuDiv: document.getElementById('in_cpuDiv').value,
+    cpuDiv: null,
     tier: 'auto',
-    step1Op: (cat==='1a'||cat==='1b') ? (document.getElementById('in_step1Op').value || 'mul') : null,
-    step1Val: (cat==='1a'||cat==='1b') ? (Number(document.getElementById('in_step1Val').value) || 0.9) : null,
+    step1Op: null, step1Val: null,
     step2Op: null, step2Val: null,
     product: product,
     desc: document.getElementById('in_desc').value,
@@ -1993,15 +1920,6 @@ async function addItem(){
     const a = addons.find(x=>x.id===id);
     if(!a) continue;
     await addAddonAsQuotationItem(a.pn || 'N/A', a.name, a.desc, a.price, base.qty, base.tier);
-  }
-
-  // one-off add-on tied to this line
-  const oneOffName = document.getElementById('in_oneoff_name').value.trim();
-  const oneOffPriceRaw = document.getElementById('in_oneoff_price').value;
-  if(oneOffName && oneOffPriceRaw){
-    const oneOffPn = document.getElementById('in_oneoff_pn').value.trim() || 'N/A';
-    const oneOffDesc = document.getElementById('in_oneoff_desc').value.trim();
-    await addAddonAsQuotationItem(oneOffPn, oneOffName, oneOffDesc, Number(oneOffPriceRaw), base.qty, base.tier);
   }
 
   resetAddItemForm();
