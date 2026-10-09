@@ -131,10 +131,34 @@ button:active{transform:translateY(1px);}
 .pn-preview-text{flex:1; min-width:160px;}
 .pn-preview-text strong{display:block; font-size:.92rem; color:var(--ink); font-family:"Manrope",sans-serif;}
 .pn-preview-text span{font-size:.78rem; color:var(--ink-soft);}
-.note-badge{
-  margin-left:auto; background:var(--highlight-bg); color:var(--highlight-text); border:1px solid var(--highlight-border);
-  padding:5px 12px; border-radius:20px; font-size:.72rem; font-weight:700; white-space:nowrap; cursor:help;
+.pn-preview-note{
+  flex-basis:100%; margin-top:2px; padding:10px 12px;
+  background:var(--highlight-bg); color:var(--highlight-text); border:1px solid var(--highlight-border);
+  border-radius:var(--radius-sm); font-size:.78rem; line-height:1.5; white-space:pre-wrap;
 }
+.pn-preview-note b{font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; opacity:.75; display:block; margin-bottom:3px;}
+
+/* compatibility suggestions (accessories / CPUs / add-ons) — tabbed so only one
+   category is open at a time instead of several long lists stacked on top of each other */
+.compat-box{margin-top:14px; padding:14px 16px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);}
+.compat-box-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
+.compat-box-title{font-size:.84rem; font-weight:700; color:var(--ink); font-family:"Manrope",sans-serif;}
+.compat-box-sub{font-size:.74rem; color:var(--ink-soft); font-weight:600;}
+.compat-tabs{display:flex; flex-wrap:wrap; gap:8px;}
+.compat-tab{
+  display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:20px; cursor:pointer;
+  background:var(--card); border:1px solid var(--line); color:var(--ink-soft); font-size:.78rem; font-weight:700;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.compat-tab:hover{border-color:var(--accent);}
+.compat-tab.active{background:var(--navy); border-color:var(--navy); color:#fff;}
+.compat-tab .count{
+  background:rgba(0,0,0,.12); border-radius:10px; padding:1px 7px; font-size:.7rem; font-weight:700;
+}
+.compat-tab.active .count{background:rgba(255,255,255,.25);}
+.compat-tab.has-selection{border-color:var(--ok-border,#3f8f5f);}
+.compat-panel{margin-top:12px;}
+.compat-panel-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;}
 
 .new-device-fields{margin-top:14px; padding:16px; background:var(--highlight-bg); border:1px solid var(--highlight-border); border-radius:var(--radius-sm);}
 .new-device-fields .hint-title{font-size:.8rem; font-weight:700; color:var(--highlight-text); margin-bottom:10px;}
@@ -396,7 +420,7 @@ html[data-theme="burgundy"]{
       <div id="pnPreview" class="pn-preview" style="display:none;">
         <span class="cat-pill" id="pnPreviewCat"></span>
         <div class="pn-preview-text"><strong id="pnPreviewProduct"></strong><span id="pnPreviewDesc"></span></div>
-        <span id="pnPreviewNoteBadge" class="note-badge" style="display:none;">📝 Has a note</span>
+        <div id="pnPreviewNote" class="pn-preview-note" style="display:none;"></div>
       </div>
 
       <div id="newDeviceFields" class="new-device-fields" style="display:none;">
@@ -432,34 +456,19 @@ html[data-theme="burgundy"]{
           <div class="f12" id="inCompatWrap" style="display:none;">
             <label>Compatible device series (optional)</label>
             <input id="in_compat" placeholder="e.g. ECX-3000, ECX-3200 — comma separated">
-            <div class="hint">Leave empty to make this accessory show up for every device (universal). Use the series prefix as it appears in the Product field — e.g. "ECX-3000" will match ECX-3000, ECX-3000V, ECX-3000-PEG, ECX-3000-PoE…</div>
+            <div class="hint">Required for this item to be auto-suggested — leaving it empty means it will never appear automatically (only via "Show all"). Use the series prefix as it appears in the Product field — e.g. "ECX-3000" will match ECX-3000, ECX-3000V, ECX-3000-PEG, ECX-3000-PoE…</div>
           </div>
         </div>
         <label class="checkbox-line"><input type="checkbox" id="saveToCatalogChk" checked> Save this device to the catalog for next time</label>
       </div>
 
-      <div id="accessoriesBox" style="display:none; margin-top:14px; padding:14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);">
-        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-          <div class="hint-title" id="accessoriesBoxTitle" style="font-size:.8rem; font-weight:700; color:var(--ink);">Compatible accessories</div>
-          <label class="checkbox-line" style="margin-top:0;"><input type="checkbox" id="showAllAccessoriesChk" onchange="renderCompatibleAccessories()"> Show all accessories</label>
+      <div id="compatBox" class="compat-box" style="display:none;">
+        <div class="compat-box-head">
+          <span class="compat-box-title">🧭 Compatible with this device</span>
+          <span class="compat-box-sub" id="compatSelectedSummary"></span>
         </div>
-        <div id="accessoriesCheckList" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
-
-      <div id="cpuBox" style="display:none; margin-top:14px; padding:14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);">
-        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-          <div class="hint-title" id="cpuBoxTitle" style="font-size:.8rem; font-weight:700; color:var(--ink);">Compatible CPUs</div>
-          <label class="checkbox-line" style="margin-top:0;"><input type="checkbox" id="showAllCpusChk" onchange="renderCompatibleCpus()"> Show all CPUs</label>
-        </div>
-        <div id="cpuCheckList" style="display:flex; flex-direction:column; gap:6px;"></div>
-      </div>
-
-      <div id="addonsBox" style="display:none; margin-top:14px; padding:14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);">
-        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-          <div class="hint-title" id="addonsBoxTitle" style="font-size:.8rem; font-weight:700; color:var(--ink);">Compatible add-ons</div>
-          <label class="checkbox-line" style="margin-top:0;"><input type="checkbox" id="showAllAddonsChk" onchange="renderAddonCheckboxes()"> Show all add-ons</label>
-        </div>
-        <div id="addonsCheckList" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <div id="compatTabs" class="compat-tabs"></div>
+        <div id="compatPanel" class="compat-panel"></div>
       </div>
 
     </div>
@@ -590,6 +599,7 @@ html[data-theme="burgundy"]{
     <div class="card">
       <h2><span class="dot"></span>All devices</h2>
       <input id="catalogSearch" placeholder="Search by PN, product or description…" oninput="renderCatalog()">
+      <div id="catalogCategoryChips" class="compat-tabs" style="margin-top:12px;"></div>
       <div id="catalogBrandChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;"></div>
       <div class="toolbar" style="margin-top:10px;">
         <button class="btn-danger" onclick="deleteSelectedCatalogItems()">🗑 Delete selected</button>
@@ -898,7 +908,7 @@ async function refetchCatalog(){
 }
 async function refetchAddons(){
   const { data, error } = await sb.from('addons').select('*').order('name', {ascending:true});
-  if(!error){ addons = (data||[]).map(mapRowToAddon); renderAddons(); renderAddonCheckboxes(); }
+  if(!error){ addons = (data||[]).map(mapRowToAddon); renderAddons(); refreshCompatibilityBoxes(); }
 }
 
 async function refetchQuotations(){
@@ -1124,19 +1134,19 @@ function populatePnDatalist(){
 }
 let pendingCatalogNote = '';
 let currentCatalogMatch = null;
+let lastCompatDeviceId = null;
 function updatePnState(){
   const pnVal = document.getElementById('in_pn').value.trim();
   const preview = document.getElementById('pnPreview');
   const newFields = document.getElementById('newDeviceFields');
-  const noteBadge = document.getElementById('pnPreviewNoteBadge');
+  const noteBox = document.getElementById('pnPreviewNote');
   renderPnSearchDropdown(pnVal);
   if(!pnVal){
     preview.style.display='none'; newFields.style.display='none';
-    document.getElementById('addonsBox').style.display='none';
-    document.getElementById('accessoriesBox').style.display='none';
-    document.getElementById('cpuBox').style.display='none';
+    document.getElementById('compatBox').style.display='none';
     pendingCatalogNote = '';
     currentCatalogMatch = null;
+    if(lastCompatDeviceId !== null){ resetCompatSelections(); lastCompatDeviceId = null; }
     return;
   }
   const match = catalog.find(c=>
@@ -1144,6 +1154,10 @@ function updatePnState(){
     (c.product||'').toLowerCase()===pnVal.toLowerCase()
   );
   currentCatalogMatch = match || null;
+  // Reset ticked compatibility selections only when the recognized device actually
+  // changes — not on every keystroke that still resolves to the same device.
+  const deviceId = match ? match.id : null;
+  if(deviceId !== lastCompatDeviceId){ resetCompatSelections(); lastCompatDeviceId = deviceId; }
   if(match){
     const validCats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
     const matchCat = validCats.includes(match.cat) ? match.cat : '2';
@@ -1159,18 +1173,19 @@ function updatePnState(){
     document.getElementById('pnPreviewProduct').textContent = match.product || '';
     document.getElementById('pnPreviewDesc').textContent = match.desc || '';
     if(pendingCatalogNote){
-      noteBadge.style.display = 'inline-block';
-      noteBadge.title = pendingCatalogNote;
+      noteBox.style.display = 'block';
+      noteBox.innerHTML = `<b>📝 Note</b>${escapeHtml(pendingCatalogNote)}`;
     } else {
-      noteBadge.style.display = 'none';
-      noteBadge.title = '';
+      noteBox.style.display = 'none';
+      noteBox.innerHTML = '';
     }
     preview.style.display = 'flex';
     newFields.style.display = 'none';
     updateTierVisibility();
   } else {
     pendingCatalogNote = '';
-    noteBadge.style.display = 'none';
+    noteBox.style.display = 'none';
+    noteBox.innerHTML = '';
     preview.style.display = 'none';
     newFields.style.display = 'block';
   }
@@ -1228,112 +1243,127 @@ async function maybeSaveNewPnToCatalog(pn, cat, product, desc, price, compatSeri
 /* ============ add-ons / accessories: compatibility + quick-add checklist ============ */
 function seriesMatches(seriesStr, productName){
   const series = (seriesStr||'').trim();
-  if(!series) return true; // universal
+  // No compatible-series tag means "not linked to anything yet" — it must NOT be
+  // auto-suggested for every device. It only shows up under the explicit "Show all" view.
+  if(!series) return false;
   const prod = (productName||'').toUpperCase();
   if(!prod) return false;
   return series.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean).some(tok=>prod.includes(tok));
 }
 function addonMatchesProduct(addon, productName){ return seriesMatches(addon.compatibleSeries, productName); }
 
-function refreshCompatibilityBoxes(){
-  renderAddonCheckboxes();
-  renderCompatibleAccessories();
-  renderCompatibleCpus();
-}
+/* Compatibility suggestions (accessories / CPUs / add-ons) — a single tabbed panel.
+   Only one category's list is open at a time, and a category never appears unless
+   there's actually something in the catalog that could show there. Selections are
+   tracked separately from the DOM (compatSelected) so switching tabs never loses
+   what was already ticked on another tab. */
+let activeCompatTab = 'acc';
+const compatShowAll = { acc:false, cpu:false, addon:false };
+const compatSelected = { acc:new Set(), cpu:new Set(), addon:new Set() };
 
-function renderAddonCheckboxes(){
-  const box = document.getElementById('addonsBox');
-  const list = document.getElementById('addonsCheckList');
-  const title = document.getElementById('addonsBoxTitle');
-  const productName = document.getElementById('in_product').value.trim();
-  const showAll = document.getElementById('showAllAddonsChk').checked;
-  // Only suggest add-ons for a device actually recognized from the catalog —
-  // typing an unknown/new device name must not surface "universal" matches.
-  if(!productName || addons.length===0 || (!currentCatalogMatch && !showAll)){ box.style.display='none'; return; }
-
-  const matched = addons.filter(a=> showAll || addonMatchesProduct(a, productName));
-  // Nothing actually compatible with this device — stay hidden instead of showing an
-  // empty placeholder box (it should only appear once there's something to offer).
-  if(matched.length===0 && !showAll){ box.style.display='none'; return; }
-
-  title.textContent = showAll ? 'All add-ons' : `Compatible add-ons for ${productName}`;
-  if(matched.length===0){
-    list.innerHTML = `<div class="hint" style="margin:0;">No add-ons in the catalog yet.</div>`;
-  } else {
-    list.innerHTML = matched.map(a=>`
-      <label class="checkbox-line" style="margin-top:0;">
-        <input type="checkbox" class="addon-chk" value="${a.id}">
-        <span>${escapeHtml(a.name)}${a.pn?' · '+escapeHtml(a.pn):''} — $${Number(a.price||0).toFixed(2)}${a.desc?' · '+escapeHtml(a.desc):''}</span>
-      </label>
-    `).join('');
-  }
-  box.style.display = 'block';
-}
-
-function renderCompatibleAccessories(){
-  const box = document.getElementById('accessoriesBox');
-  const list = document.getElementById('accessoriesCheckList');
-  const title = document.getElementById('accessoriesBoxTitle');
-  const productName = document.getElementById('in_product').value.trim();
+function getCompatCategoryData(productName){
   const accessoryCatalog = catalog.filter(c=>c.cat==='acc');
-  const showAll = document.getElementById('showAllAccessoriesChk').checked;
-  // Only suggest accessories for a device actually recognized from the catalog —
-  // typing an unknown/new device name must not surface "universal" matches.
-  if(!productName || accessoryCatalog.length===0 || (!currentCatalogMatch && !showAll)){ box.style.display='none'; return; }
-
-  const matched = accessoryCatalog.filter(a=> showAll || seriesMatches(a.compatSeries, productName));
-  // Nothing actually compatible with this device — stay hidden instead of showing an
-  // empty placeholder box (it should only appear once there's something to offer).
-  if(matched.length===0 && !showAll){ box.style.display='none'; return; }
-
-  title.textContent = showAll ? 'All accessories' : `Compatible accessories for ${productName}`;
-  if(matched.length===0){
-    list.innerHTML = `<div class="hint" style="margin:0;">No accessories in the catalog yet.</div>`;
-  } else {
-    list.innerHTML = matched.map(a=>`
-      <label class="checkbox-line" style="margin-top:0;">
-        <input type="checkbox" class="accessory-chk" value="${a.id}">
-        <span>${escapeHtml(a.product||'')}${a.pn?' · '+escapeHtml(a.pn):''} — $${a.price!=null?Number(a.price).toFixed(2):'—'}${a.desc?' · '+escapeHtml(a.desc):''}</span>
-      </label>
-    `).join('');
-  }
-  box.style.display = 'block';
-}
-
-function renderCompatibleCpus(){
-  const box = document.getElementById('cpuBox');
-  const list = document.getElementById('cpuCheckList');
-  const title = document.getElementById('cpuBoxTitle');
-  const productName = document.getElementById('in_product').value.trim();
   const cpuCatalog = catalog.filter(c=>c.cat==='cpu');
-  const showAll = document.getElementById('showAllCpusChk').checked;
-  // CPU suggestions only make sense for a recognized system device, and only
-  // when that system doesn't already come with a fixed/built-in processor
-  // (e.g. NVIDIA Jetson-based systems) — those never get a CPU picker at all.
   const isSystem = currentCatalogMatch && (currentCatalogMatch.cat==='1a' || currentCatalogMatch.cat==='1');
   const cpuBuiltin = currentCatalogMatch && currentCatalogMatch.cpuBuiltin;
-  if(!productName || cpuCatalog.length===0 || !isSystem || cpuBuiltin || (!currentCatalogMatch && !showAll)){
-    box.style.display='none';
-    return;
+  const cpuEligible = !!(isSystem && !cpuBuiltin);
+
+  return [
+    { key:'acc', icon:'🧩', label:'Accessories', items:accessoryCatalog,
+      matched: accessoryCatalog.filter(a=> compatShowAll.acc || seriesMatches(a.compatSeries, productName)),
+      eligible: accessoryCatalog.length>0, getName:a=>a.product },
+    { key:'cpu', icon:'🖥', label:'CPUs', items:cpuEligible?cpuCatalog:[],
+      matched: cpuEligible ? cpuCatalog.filter(c=> compatShowAll.cpu || seriesMatches(c.compatSeries, productName)) : [],
+      eligible: cpuEligible && cpuCatalog.length>0, getName:c=>c.product },
+    { key:'addon', icon:'⚡', label:'Add-ons', items:addons,
+      matched: addons.filter(a=> compatShowAll.addon || addonMatchesProduct(a, productName)),
+      eligible: addons.length>0, getName:a=>a.name },
+  ];
+}
+
+function refreshCompatibilityBoxes(){
+  const box = document.getElementById('compatBox');
+  const tabsHost = document.getElementById('compatTabs');
+  const productName = document.getElementById('in_product').value.trim();
+
+  // Only suggest anything for a device actually recognized from the catalog —
+  // typing an unknown/new device name must never surface suggestions at all.
+  if(!productName || !currentCatalogMatch){ box.style.display='none'; tabsHost.innerHTML=''; return; }
+
+  const cats = getCompatCategoryData(productName).filter(c=>c.eligible);
+  if(cats.length===0){ box.style.display='none'; tabsHost.innerHTML=''; return; }
+
+  if(!cats.some(c=>c.key===activeCompatTab)){
+    activeCompatTab = (cats.find(c=>c.matched.length>0) || cats[0]).key;
   }
 
-  const matched = cpuCatalog.filter(c=> showAll || seriesMatches(c.compatSeries, productName));
-  // Nothing actually compatible with this device — stay hidden instead of showing an
-  // empty placeholder box (it should only appear once there's something to offer).
-  if(matched.length===0 && !showAll){ box.style.display='none'; return; }
+  tabsHost.innerHTML = cats.map(c=>{
+    const active = c.key===activeCompatTab;
+    const hasSel = compatSelected[c.key].size>0;
+    return `<button type="button" class="compat-tab ${active?'active':''} ${hasSel?'has-selection':''}" onclick="setCompatTab('${c.key}')">
+      ${c.icon} ${escapeHtml(c.label)} <span class="count">${c.matched.length}</span>${hasSel?' ✓':''}
+    </button>`;
+  }).join('');
 
-  title.textContent = showAll ? 'All CPUs' : `Compatible CPUs for ${productName}`;
-  if(matched.length===0){
-    list.innerHTML = `<div class="hint" style="margin:0;">No CPUs in the catalog yet.</div>`;
-  } else {
-    list.innerHTML = matched.map(c=>`
-      <label class="checkbox-line" style="margin-top:0;">
-        <input type="checkbox" class="cpu-chk" value="${c.id}">
-        <span>${escapeHtml(c.product||'')}${c.pn?' · '+escapeHtml(c.pn):''} — $${c.price!=null?Number(c.price).toFixed(2):'—'}${c.desc?' · '+escapeHtml(c.desc):''}</span>
-      </label>
-    `).join('');
-  }
+  renderCompatPanel(productName);
   box.style.display = 'block';
+  const summary = document.getElementById('compatSelectedSummary');
+  const total = compatSelected.acc.size + compatSelected.cpu.size + compatSelected.addon.size;
+  summary.textContent = total>0 ? `${total} selected` : '';
+}
+
+function setCompatTab(key){
+  activeCompatTab = key;
+  refreshCompatibilityBoxes();
+}
+
+function setCompatShowAll(key, val){
+  compatShowAll[key] = val;
+  refreshCompatibilityBoxes();
+}
+
+function toggleCompatSelection(key, id, checked){
+  if(checked) compatSelected[key].add(id); else compatSelected[key].delete(id);
+  refreshCompatibilityBoxes();
+}
+
+function renderCompatPanel(productName){
+  const panel = document.getElementById('compatPanel');
+  const cats = getCompatCategoryData(productName);
+  const cat = cats.find(c=>c.key===activeCompatTab);
+  if(!cat){ panel.innerHTML=''; return; }
+  const showAll = compatShowAll[cat.key];
+  const selected = compatSelected[cat.key];
+  const labelLower = cat.label.toLowerCase();
+
+  let listHtml;
+  if(cat.matched.length===0){
+    listHtml = `<div class="hint" style="margin:0;">No compatible ${labelLower} tagged for this device yet. Check "Show all" to pick manually.</div>`;
+  } else {
+    listHtml = `<div style="display:flex; flex-direction:column; gap:6px;">` + cat.matched.map(item=>{
+      const name = cat.getName(item);
+      const price = (item.price!=null && item.price!=='') ? '$'+Number(item.price).toFixed(2) : '—';
+      const checked = selected.has(item.id) ? 'checked' : '';
+      return `<label class="checkbox-line" style="margin-top:0;">
+        <input type="checkbox" onchange="toggleCompatSelection('${cat.key}','${item.id}',this.checked)" ${checked}>
+        <span>${escapeHtml(name||'')}${item.pn?' · '+escapeHtml(item.pn):''} — ${price}${item.desc?' · '+escapeHtml(item.desc):''}</span>
+      </label>`;
+    }).join('') + `</div>`;
+  }
+
+  panel.innerHTML = `
+    <div class="compat-panel-head">
+      <div class="hint-title" style="font-size:.8rem; font-weight:700; color:var(--ink);">${showAll?`All ${labelLower}`:`Compatible ${labelLower} for ${escapeHtml(productName)}`}</div>
+      <label class="checkbox-line" style="margin-top:0;"><input type="checkbox" ${showAll?'checked':''} onchange="setCompatShowAll('${cat.key}', this.checked)"> Show all ${labelLower}</label>
+    </div>
+    ${listHtml}
+  `;
+}
+
+function resetCompatSelections(){
+  compatSelected.acc.clear(); compatSelected.cpu.clear(); compatSelected.addon.clear();
+  compatShowAll.acc = false; compatShowAll.cpu = false; compatShowAll.addon = false;
+  activeCompatTab = 'acc';
 }
 
 /* ============ add-ons: CRUD ============ */
@@ -1409,7 +1439,7 @@ function renderAddons(){
       <td class="left-al"><input value="${escapeHtml(a.pn||'')}" style="min-width:110px;" onchange="updateAddonField('${a.id}','pn',this.value)"></td>
       <td class="left-al"><input value="${escapeHtml(a.name||'')}" style="min-width:140px;" onchange="updateAddonField('${a.id}','name',this.value)"></td>
       <td class="left-al"><input value="${escapeHtml(a.desc||'')}" style="min-width:200px;" onchange="updateAddonField('${a.id}','desc',this.value)"></td>
-      <td class="left-al"><input value="${escapeHtml(a.compatibleSeries||'')}" placeholder="Universal" style="min-width:180px;" onchange="updateAddonField('${a.id}','compatibleSeries',this.value)"></td>
+      <td class="left-al"><input value="${escapeHtml(a.compatibleSeries||'')}" placeholder="Not linked — won't auto-suggest" style="min-width:180px;" onchange="updateAddonField('${a.id}','compatibleSeries',this.value)"></td>
       <td class="num"><input type="number" min="0" step="0.01" value="${a.price!=null?a.price:''}" style="width:95px;" onchange="updateAddonField('${a.id}','price',this.value?Number(this.value):0)"></td>
       <td><button class="btn-danger" onclick="removeAddon('${a.id}')">Delete</button></td>
     `;
@@ -1520,21 +1550,48 @@ async function updateCatalogField(id, field, value){
   }
 }
 let catalogBrandFilter = '';
+let catalogCategoryFilter = '';
+const catalogCategoryOrder = ['1a','1b','cpu','mod','gc','acc','2','3a','3b','4'];
+function setCatalogCategoryFilter(cat){
+  catalogCategoryFilter = cat;
+  catalogBrandFilter = ''; // a category switch starts fresh — old brand filter wouldn't apply anymore
+  renderCatalog();
+}
 function renderCatalog(){
   populatePnDatalist();
   const body = document.getElementById('catalogBody');
   const empty = document.getElementById('catalogEmptyState');
   const term = (document.getElementById('catalogSearch').value||'').trim().toLowerCase();
 
+  // Category tabs — one click shows just that type (Accessories, CPUs, RAM, ...)
+  // instead of every category mixed together in one long table.
+  const catChipsHost = document.getElementById('catalogCategoryChips');
+  if(catChipsHost){
+    const presentCats = catalogCategoryOrder.filter(cat=>catalog.some(c=>c.cat===cat));
+    if(presentCats.length===0){
+      catChipsHost.innerHTML = '';
+    } else {
+      const allCount = catalog.length;
+      catChipsHost.innerHTML =
+        `<button type="button" class="compat-tab ${catalogCategoryFilter===''?'active':''}" onclick="setCatalogCategoryFilter('')">All <span class="count">${allCount}</span></button>` +
+        presentCats.map(cat=>{
+          const count = catalog.filter(c=>c.cat===cat).length;
+          return `<button type="button" class="compat-tab ${catalogCategoryFilter===cat?'active':''}" onclick="setCatalogCategoryFilter('${cat}')">${escapeHtml(catLabel(cat))} <span class="count">${count}</span></button>`;
+        }).join('');
+    }
+  }
+
   // Brand/sub-type filter chips — built from whatever brands exist in the
   // catalog's RAM/Storage items, so this adapts automatically as brands are added.
+  // Only relevant once a RAM/Storage category (or "All") is in view.
   const chipsHost = document.getElementById('catalogBrandChips');
   if(chipsHost){
-    const brands = [...new Set(catalog.filter(c=>(c.cat==='3a'||c.cat==='3b') && c.brand).map(c=>c.brand))].sort();
+    const brandRelevant = catalogCategoryFilter==='' || catalogCategoryFilter==='3a' || catalogCategoryFilter==='3b';
+    const brands = brandRelevant ? [...new Set(catalog.filter(c=>(c.cat==='3a'||c.cat==='3b') && c.brand).map(c=>c.brand))].sort() : [];
     if(brands.length===0){
       chipsHost.innerHTML = '';
     } else {
-      chipsHost.innerHTML = `<button type="button" class="tab-btn ${catalogBrandFilter===''?'active':''}" onclick="setCatalogBrandFilter('')" style="font-size:.76rem; padding:5px 12px;">All</button>` +
+      chipsHost.innerHTML = `<button type="button" class="tab-btn ${catalogBrandFilter===''?'active':''}" onclick="setCatalogBrandFilter('')" style="font-size:.76rem; padding:5px 12px;">All brands</button>` +
         brands.map(b=>`<button type="button" class="tab-btn ${catalogBrandFilter===b?'active':''}" onclick="setCatalogBrandFilter('${escapeHtml(b).replace(/'/g,"\\'")}')" style="font-size:.76rem; padding:5px 12px;">${escapeHtml(b)}</button>`).join('');
     }
   }
@@ -1546,6 +1603,7 @@ function renderCatalog(){
     (c.note||'').toLowerCase().includes(term) ||
     (c.brand||'').toLowerCase().includes(term)
   ) : catalog;
+  if(catalogCategoryFilter) filtered = filtered.filter(c=>c.cat===catalogCategoryFilter);
   if(catalogBrandFilter) filtered = filtered.filter(c=>c.brand===catalogBrandFilter);
 
   body.innerHTML = '';
@@ -1578,7 +1636,7 @@ function renderCatalog(){
       <td class="left-al"><input value="${escapeHtml(c.product||'')}" style="min-width:130px;" onchange="updateCatalogField('${c.id}','product',this.value)"></td>
       <td class="left-al"><input value="${escapeHtml(c.desc||'')}" style="min-width:240px;" onchange="updateCatalogField('${c.id}','desc',this.value)"></td>
       <td class="num"><input type="number" min="0" step="0.01" value="${c.price!=null?c.price:''}" style="width:95px;" onchange="updateCatalogField('${c.id}','price',this.value?Number(this.value):null)"></td>
-      <td class="left-al"><input value="${escapeHtml(c.compatSeries||'')}" placeholder="Universal" style="min-width:170px;" onchange="updateCatalogField('${c.id}','compatSeries',this.value)"></td>
+      <td class="left-al"><input value="${escapeHtml(c.compatSeries||'')}" placeholder="Not linked — won't auto-suggest" style="min-width:170px;" onchange="updateCatalogField('${c.id}','compatSeries',this.value)"></td>
       <td class="left-al"><textarea rows="2" style="min-width:180px; font-size:.76rem;" placeholder="Optional note" onchange="updateCatalogField('${c.id}','note',this.value)">${escapeHtml(c.note||'')}</textarea></td>
       <td><button class="btn-danger" onclick="removeCatalogItem('${c.id}')">Delete</button></td>
     `;
@@ -1825,15 +1883,13 @@ function resetAddItemForm(){
   document.getElementById('modTypeWrap').style.display='none';
   document.getElementById('inCompatWrap').style.display='none';
   document.getElementById('pnPreview').style.display='none';
+  document.getElementById('pnPreviewNote').style.display='none';
   document.getElementById('newDeviceFields').style.display='none';
-  document.getElementById('addonsBox').style.display='none';
-  document.getElementById('accessoriesBox').style.display='none';
-  document.getElementById('cpuBox').style.display='none';
-  document.getElementById('showAllAddonsChk').checked=false;
-  document.getElementById('showAllAccessoriesChk').checked=false;
-  document.getElementById('showAllCpusChk').checked=false;
+  document.getElementById('compatBox').style.display='none';
   document.getElementById('pnSearchDropdown').style.display='none';
   currentCatalogMatch = null;
+  lastCompatDeviceId = null;
+  resetCompatSelections();
 }
 
 async function addItem(){
@@ -1899,7 +1955,7 @@ async function addItem(){
   await maybeSaveNewPnToCatalog(base.pn, base.cat, base.product, base.desc, base.price, newCompat);
 
   // selected compatible accessories (from catalog) -> each becomes its own line item
-  const checkedAccessoryIds = Array.from(document.querySelectorAll('.accessory-chk:checked')).map(el=>el.value);
+  const checkedAccessoryIds = Array.from(compatSelected.acc);
   for(const id of checkedAccessoryIds){
     const c = catalog.find(x=>x.id===id);
     if(!c) continue;
@@ -1907,7 +1963,7 @@ async function addItem(){
   }
 
   // selected compatible CPUs (from catalog) -> each becomes its own line item
-  const checkedCpuIds = Array.from(document.querySelectorAll('.cpu-chk:checked')).map(el=>el.value);
+  const checkedCpuIds = Array.from(compatSelected.cpu);
   for(const id of checkedCpuIds){
     const c = catalog.find(x=>x.id===id);
     if(!c) continue;
@@ -1915,7 +1971,7 @@ async function addItem(){
   }
 
   // selected compatible/general add-ons -> each becomes its own line item with the real add-on PN
-  const checkedAddonIds = Array.from(document.querySelectorAll('.addon-chk:checked')).map(el=>el.value);
+  const checkedAddonIds = Array.from(compatSelected.addon);
   for(const id of checkedAddonIds){
     const a = addons.find(x=>x.id===id);
     if(!a) continue;
