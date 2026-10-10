@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230a1830'/%3E%3Cpath d='M30 52 L45 67 L72 35' stroke='%23b08d3f' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
@@ -16,13 +16,21 @@
   --paper:#f8f7f3; --card:#ffffff; --input-bg:#ffffff; --accent:#b08d3f; --accent-2:#d4b568;
   --green:#3f8f5f; --purple:#7c5cbf; --orange:#c1791f; --brown:#8a5a2b; --steel:#3a6fa0;
   --danger:#c23b3b; --danger-bg:#fdeceb; --ok:#1c7a4f; --ok-bg:#e9f5ee;
-  --radius:16px; --radius-sm:10px;
+  --radius:14px; --radius-sm:8px;
   --shadow:0 1px 2px rgba(10,24,48,.05), 0 2px 6px rgba(10,24,48,.05);
   --shadow-md:0 8px 24px rgba(10,24,48,.10), 0 2px 6px rgba(10,24,48,.06);
+  --shadow-lg:0 20px 48px rgba(10,24,48,.16), 0 4px 12px rgba(10,24,48,.08);
   --highlight-bg:#fcf8ef; --highlight-border:#ecdfc0; --highlight-text:#8a6a24; --highlight-text-soft:#7a6a3f; --highlight-input-bg:#ffffff; --highlight-input-text:#2a2214;
+  --font-display:"Manrope",sans-serif; --font-body:"Inter",-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
   color-scheme: light;
 }
 *{box-sizing:border-box;}
+::selection{background:var(--accent); color:#fff;}
+::-webkit-scrollbar{width:11px; height:11px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--line); border-radius:20px; border:3px solid var(--paper); background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-soft); background-clip:padding-box;}
 body{
   margin:0; background:var(--paper); color:var(--ink);
   font-family:"Inter",-apple-system,"Segoe UI",sans-serif; line-height:1.5; -webkit-font-smoothing:antialiased;
@@ -68,11 +76,12 @@ header.top{
 .stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px;}
 .stat-card{
   background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px;
-  box-shadow:var(--shadow); position:relative; overflow:hidden;
+  box-shadow:var(--shadow); position:relative; overflow:hidden; transition:box-shadow .2s, border-color .2s;
 }
+.stat-card:hover{box-shadow:var(--shadow-md); border-color:rgba(176,141,63,.3);}
 .stat-card::before{content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--navy),var(--accent));}
 .stat-lbl{font-size:.72rem; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:.06em;}
-.stat-val{font-family:"Manrope",sans-serif; font-size:1.7rem; font-weight:800; margin-top:6px; letter-spacing:-.015em; color:var(--ink);}
+.stat-val{font-family:var(--font-mono); font-size:1.7rem; font-weight:700; margin-top:6px; letter-spacing:-.02em; color:var(--ink);}
 .stat-val.ok{color:var(--ok);} .stat-val.danger{color:var(--danger);}
 @media(max-width:900px){.stat-row{grid-template-columns:repeat(2,1fr);}}
 
@@ -107,10 +116,16 @@ select option{background:var(--input-bg); color:var(--ink);}
 .cat-2{background:var(--green);} .cat-3a{background:var(--purple);} .cat-3b{background:#9d6fd1;} .cat-4{background:var(--orange);}
 .cat-gc{background:#2f6f6f;} .cat-acc{background:#6b7280;} .cat-cpu{background:var(--brown);} .cat-mod{background:var(--steel);}
 
-button{cursor:pointer; border:none; border-radius:var(--radius-sm); padding:11px 20px; font-size:.87rem; font-weight:700; font-family:inherit; transition:filter .15s, transform .05s, box-shadow .15s;}
+button{cursor:pointer; border:none; border-radius:var(--radius-sm); padding:11px 20px; font-size:.87rem; font-weight:700; font-family:inherit; transition:filter .15s, transform .05s, box-shadow .2s;}
 button:active{transform:translateY(1px);}
-.btn-primary{background:linear-gradient(135deg,var(--navy),var(--navy-2)); color:#fff; box-shadow:0 2px 8px rgba(10,24,48,.25);}
-.btn-primary:hover{box-shadow:0 4px 14px rgba(10,24,48,.32); filter:brightness(1.06);}
+.btn-primary{position:relative; overflow:hidden; background:linear-gradient(135deg,var(--navy),var(--navy-2)); color:#fff; box-shadow:0 2px 8px rgba(10,24,48,.25); isolation:isolate;}
+.btn-primary::before{
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.22) 48%, rgba(255,255,255,.22) 52%, transparent 70%);
+  transform:translateX(-120%); transition:transform .55s ease;
+}
+.btn-primary:hover{box-shadow:0 6px 18px rgba(10,24,48,.35); filter:brightness(1.04);}
+.btn-primary:hover::before{transform:translateX(120%);}
 .btn-outline{background:transparent; border:1px solid var(--line); color:var(--ink);}
 .btn-outline:hover{border-color:var(--accent); color:var(--accent);}
 .btn-danger{background:transparent; border:1px solid var(--danger); color:var(--danger); padding:6px 12px; font-size:.78rem; font-weight:600;}
@@ -184,7 +199,7 @@ td input,td select{padding:6px 8px; font-size:.8rem;}
 .table-scroll table{border:none;}
 tr.low-margin td{background:var(--danger-bg);}
 .tag-note{font-size:.72rem; color:var(--ink-soft); white-space:pre-line; text-align:left;}
-.num{font-variant-numeric:tabular-nums;} .left-al{text-align:left;}
+.num{font-variant-numeric:tabular-nums; font-family:var(--font-mono); font-size:.92em; letter-spacing:-.01em;} .left-al{text-align:left;}
 .trunc{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:help;}
 
 .subtable-label{display:flex; align-items:center; gap:7px; font-size:.74rem; font-weight:800; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; padding:12px 10px 8px; background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
@@ -215,9 +230,20 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 .toast.success{border-left-color:var(--ok);}
 @keyframes toast-in{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
 
-/* card entrance */
-@keyframes card-in{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
-.card{animation:card-in .35s ease-out both;}
+/* card entrance — one orchestrated reveal per tab, each card settling slightly
+   after the one before it, instead of everything popping in at once */
+@keyframes card-in{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+.card{animation:card-in .5s cubic-bezier(.16,1,.3,1) both;}
+.card:nth-of-type(1){animation-delay:.02s;}
+.card:nth-of-type(2){animation-delay:.08s;}
+.card:nth-of-type(3){animation-delay:.14s;}
+.card:nth-of-type(4){animation-delay:.2s;}
+.card:nth-of-type(5){animation-delay:.26s;}
+.card:nth-of-type(n+6){animation-delay:.3s;}
+@media(prefers-reduced-motion: reduce){
+  .card,.modal-box,.auth-card{animation:none !important;}
+  *{scroll-behavior:auto !important;}
+}
 
 /* dashboard */
 .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px;}
@@ -302,6 +328,28 @@ html[data-theme="burgundy"]{
 .auth-hint{font-size:.72rem; color:var(--ink-soft); margin-top:20px; line-height:1.55;}
 #appRoot{display:none;}
 
+/* data-loading overlay — shown briefly while the first Supabase round-trip
+   is in flight, so the wait reads as a deliberate branded moment instead of
+   an empty/stalled page. */
+.loading-overlay{
+  position:fixed; inset:0; z-index:1500; display:none; align-items:center; justify-content:center;
+  background:var(--paper); flex-direction:column; gap:18px;
+}
+.loading-overlay.show{display:flex;}
+.loading-mark{
+  width:54px; height:54px; border-radius:14px; background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 55%,var(--accent) 130%);
+  color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.3rem;
+  font-family:var(--font-display); box-shadow:var(--shadow-lg); position:relative;
+}
+.loading-ring{
+  position:absolute; inset:-7px; border-radius:18px; border:2.5px solid transparent;
+  border-top-color:var(--accent); border-right-color:var(--accent);
+  animation:spin .85s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:.82rem; color:var(--ink-soft); font-weight:600; letter-spacing:.02em;}
+@media(prefers-reduced-motion: reduce){.loading-ring{animation-duration:2s;}}
+
 /* header extras */
 .brand-subtitle{font-size:.68rem; color:var(--ink-soft); font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-top:3px;}
 .header-right{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
@@ -330,6 +378,11 @@ html[data-theme="burgundy"]{
     <button class="btn-primary" style="width:100%; margin-top:18px;" onclick="signIn()">Sign in</button>
     <div class="auth-hint">Access is limited to the Vecow Tech team. Contact your admin if you need an account.</div>
   </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-mark">V<span class="loading-ring"></span></div>
+  <div class="loading-text" id="loadingText">Loading your pricing data…</div>
 </div>
 
 <div class="wrap" id="appRoot">
@@ -786,6 +839,8 @@ function mapRowToQuotation(row){
 }
 
 /* ============ init / persistence ============ */
+function showLoadingOverlay(){ document.getElementById('loadingOverlay').classList.add('show'); }
+function hideLoadingOverlay(){ document.getElementById('loadingOverlay').classList.remove('show'); }
 async function initPersistence(){
   try{
     if(typeof supabase === 'undefined') throw new Error('supabase-js failed to load');
@@ -895,6 +950,8 @@ async function initPersistence(){
     renderAddons();
     updateCurrentQStatus();
     renderDashboard();
+  } finally {
+    hideLoadingOverlay();
   }
 }
 
@@ -959,6 +1016,7 @@ async function signIn(){
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if(error){ showAuthGate(error.message || 'Sign-in failed. Check your email and password.'); return; }
   showApp(data.user ? data.user.email : email);
+  showLoadingOverlay();
   await initPersistence();
 }
 async function signOut(){
@@ -973,6 +1031,7 @@ async function checkAuthAndStart(){
     const { data } = await sb.auth.getSession();
     if(data && data.session && data.session.user){
       showApp(data.session.user.email);
+      showLoadingOverlay();
       await initPersistence();
     } else {
       showAuthGate();
