@@ -2620,7 +2620,7 @@ async function getSheetsWebAppUrl(forcePrompt){
   if(url && !forcePrompt) return url;
   const entered = await appPrompt(
     forcePrompt ? 'Update the Google Sheets link (Apps Script Web App URL):' : 'Paste your Google Sheets Web App link (one-time setup — see the setup guide for how to get it):',
-    'https://script.google.com/macros/s/XXXXXXXX/exec',
+    'https://script.google.com/macros/s/AKfycbx686bNfhcIbKg90EtXhRhu1-ulZyNZhYGYIt5qWzlEE_AuKX68yTw77-jWR3NYzm5U/exec',
     url
   );
   if(!entered) return null;
