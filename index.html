@@ -87,7 +87,7 @@ header.top{
 
 /* main tabs */
 .maintabs{display:flex; gap:6px; margin-bottom:20px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:5px; width:fit-content; box-shadow:var(--shadow);}
-.maintab{background:transparent; border:none; padding:9px 20px; font-size:.87rem; font-weight:700; color:var(--ink-soft); border-radius:10px;}
+.maintab{background:transparent; border:none; padding:9px 20px; font-size:.87rem; font-weight:700; color:var(--ink-soft); border-radius:10px; transition:background .2s, color .2s, box-shadow .2s;}
 .maintab.active{color:#fff; background:linear-gradient(135deg,var(--navy),var(--navy-2)); box-shadow:0 2px 6px rgba(10,24,48,.25);}
 
 /* cards */
@@ -562,8 +562,11 @@ html[data-theme="burgundy"]{
       <div id="previewClient" class="table-scroll" style="display:none;"></div>
       <div class="toolbar">
         <button class="btn-primary" onclick="exportExcel()">⬇ Export Excel</button>
+        <button class="btn-primary" id="sheetsSendBtn" onclick="sendToGoogleSheets()">📊 Send to Google Sheets</button>
+        <button class="btn-outline" onclick="changeSheetsLink()" title="Set or change the Google Sheets link">⚙ Sheets link</button>
         <button class="btn-outline" onclick="clearAll()">Clear all items</button>
       </div>
+      <div class="hint" id="sheetsSetupHint">First time? See the setup guide that came with this file to connect a Google Sheet — it only takes a minute, once.</div>
     </div>
 
   </div>
@@ -711,6 +714,16 @@ html[data-theme="burgundy"]{
     </div>
   </div>
 </div>
+<div id="promptModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div id="promptModalMsg" class="modal-msg"></div>
+    <div style="margin-bottom:4px;"><input id="promptModalInput" placeholder=""></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn-outline" id="promptModalCancel">Cancel</button>
+      <button class="btn-primary" id="promptModalOk">Save</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ============ Supabase connection ============ */
@@ -783,6 +796,35 @@ function appConfirm(message, opts){
 function appAlert(message){
   return appConfirm(message, {alertOnly:true, okLabel:'OK'});
 }
+function appPrompt(message, placeholder, defaultValue){
+  return new Promise(resolve=>{
+    const overlay = document.getElementById('promptModal');
+    document.getElementById('promptModalMsg').textContent = message;
+    const input = document.getElementById('promptModalInput');
+    input.placeholder = placeholder || '';
+    input.value = defaultValue || '';
+    const okBtn = document.getElementById('promptModalOk');
+    const cancelBtn = document.getElementById('promptModalCancel');
+    overlay.style.display = 'flex';
+    setTimeout(()=>input.focus(), 50);
+    function cleanup(result){
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlay);
+      input.removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+    function onOk(){ cleanup(input.value.trim() || null); }
+    function onCancel(){ cleanup(null); }
+    function onOverlay(e){ if(e.target===overlay) cleanup(null); }
+    function onKey(e){ if(e.key==='Enter') onOk(); if(e.key==='Escape') onCancel(); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlay);
+    input.addEventListener('keydown', onKey);
+  });
+}
 
 function applyTheme(name){
   document.documentElement.setAttribute('data-theme', name);
@@ -839,8 +881,25 @@ function mapRowToQuotation(row){
 }
 
 /* ============ init / persistence ============ */
-function showLoadingOverlay(){ document.getElementById('loadingOverlay').classList.add('show'); }
-function hideLoadingOverlay(){ document.getElementById('loadingOverlay').classList.remove('show'); }
+let loadingOverlayTimers = [];
+function showLoadingOverlay(){
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = 'Loading your pricing data…';
+  // If the very first request of the session hits a paused/sleeping database
+  // (common on a free-tier project after inactivity), say so instead of
+  // leaving the person staring at a frozen, unexplained message.
+  loadingOverlayTimers.push(setTimeout(()=>{
+    document.getElementById('loadingText').textContent = 'Still loading — the database may be waking up from being idle…';
+  }, 4000));
+  loadingOverlayTimers.push(setTimeout(()=>{
+    document.getElementById('loadingText').innerHTML = 'This is taking unusually long.<br>Check your connection, or <a href="#" onclick="location.reload();return false;" style="color:var(--accent); font-weight:700;">reload the page</a>.';
+  }, 12000));
+}
+function hideLoadingOverlay(){
+  document.getElementById('loadingOverlay').classList.remove('show');
+  loadingOverlayTimers.forEach(clearTimeout);
+  loadingOverlayTimers = [];
+}
 async function initPersistence(){
   try{
     if(typeof supabase === 'undefined') throw new Error('supabase-js failed to load');
@@ -1050,19 +1109,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   try{ savedTheme = localStorage.getItem('vecow_theme') || 'gold'; }catch(e){}
   applyTheme(savedTheme);
   ['qNo','qDate','qClient'].forEach(id=>document.getElementById(id).addEventListener('change', saveMeta));
-  document.getElementById('in_cat').addEventListener('change', function(){
-    const v = this.value;
-    document.getElementById('modTypeWrap').style.display = (v==='mod') ? '' : 'none';
-    document.getElementById('inCompatWrap').style.display = (v==='acc') ? '' : 'none';
-    updateTierVisibility();
-  });
-  document.getElementById('cat_cat').addEventListener('change', function(){
-    const v = this.value;
-    document.getElementById('catModTypeWrap').style.display = (v==='mod') ? '' : 'none';
-    document.getElementById('catCompatWrap').style.display = (v==='acc') ? '' : 'none';
-    document.getElementById('catBrandWrap').style.display = (v==='3a' || v==='3b') ? '' : 'none';
-    document.getElementById('catCpuBuiltinWrap').style.display = (v==='1a' || v==='1') ? '' : 'none';
-  });
+  document.getElementById('in_cat').addEventListener('change', updateNewDeviceFieldsVisibility);
+  document.getElementById('cat_cat').addEventListener('change', updateCatFieldsVisibility);
   document.getElementById('cat_brand').addEventListener('change', function(){
     document.getElementById('cat_brand_custom').style.display = (this.value==='__other__') ? '' : 'none';
   });
@@ -1084,6 +1132,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
 function updateTierVisibility(){
   // Advanced options (CPU divisor / Step 1 override / one-off add-on) were removed —
   // Step 1 & Step 2 are now always edited per-row in the items table instead.
+}
+function updateNewDeviceFieldsVisibility(){
+  const v = document.getElementById('in_cat').value;
+  document.getElementById('modTypeWrap').style.display = (v==='mod') ? '' : 'none';
+  document.getElementById('inCompatWrap').style.display = (v==='acc') ? '' : 'none';
+  updateTierVisibility();
 }
 
 /* ============ pricing engine ============ */
@@ -1247,6 +1301,7 @@ function updatePnState(){
     noteBox.innerHTML = '';
     preview.style.display = 'none';
     newFields.style.display = 'block';
+    updateNewDeviceFieldsVisibility();
   }
   refreshCompatibilityBoxes();
 }
@@ -1507,6 +1562,13 @@ function renderAddons(){
 }
 
 /* ============ catalog: CRUD ============ */
+function updateCatFieldsVisibility(){
+  const v = document.getElementById('cat_cat').value;
+  document.getElementById('catModTypeWrap').style.display = (v==='mod') ? '' : 'none';
+  document.getElementById('catCompatWrap').style.display = (v==='acc') ? '' : 'none';
+  document.getElementById('catBrandWrap').style.display = (v==='3a' || v==='3b') ? '' : 'none';
+  document.getElementById('catCpuBuiltinWrap').style.display = (v==='1a' || v==='1') ? '' : 'none';
+}
 async function addCatalogItem(){
   const pn = document.getElementById('cat_pn').value.trim();
   const product = document.getElementById('cat_product').value.trim();
@@ -1557,11 +1619,12 @@ async function addCatalogItem(){
   document.getElementById('cat_modType').value = '';
   document.getElementById('cat_brand').value = '';
   document.getElementById('cat_cpuBuiltin').checked = false;
-  document.getElementById('catModTypeWrap').style.display = 'none';
-  document.getElementById('catCompatWrap').style.display = 'none';
-  document.getElementById('catBrandWrap').style.display = 'none';
   document.getElementById('cat_brand_custom').style.display = 'none';
-  document.getElementById('catCpuBuiltinWrap').style.display = 'none';
+  // Re-apply visibility for the *currently selected* Type instead of hiding
+  // everything — otherwise "Compatible series"/"Built-in CPU" would vanish
+  // after adding the first device and only come back after a page reload.
+  updateCatFieldsVisibility();
+  document.getElementById('cat_pn').focus();
 }
 
 async function removeCatalogItem(id){
@@ -2474,6 +2537,129 @@ async function exportExcel(){
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/* ============ Google Sheets live push ============
+   Mirrors exportExcel()'s exact layout (same columns, same two-step formulas
+   on the Vecow(PO) block) but sends it as JSON to a Google Apps Script "Web App"
+   the person deploys once on their own Google Sheet, instead of writing a file.
+   The script (not this page) does the actual writing, so no Google sign-in or
+   API key ever has to live inside this HTML file. */
+const SHEETS_URL_KEY = 'vecow_sheets_webapp_url';
+
+function buildGoogleSheetPayload(){
+  const qNo = document.getElementById('qNo').value || '1';
+  const qDate = document.getElementById('qDate').value || '';
+  const dateLabel = qDate ? qDate.replace(/-/g,'') : '';
+  const clientName = document.getElementById('qClient').value || '';
+  const headRow = clientName ? 4 : 3;
+
+  function vecowRowObj(item, no, r){
+    const eff = getEffective(item);
+    const qty = Number(item.qty)||1;
+    const orig = Number((Number(item.price)||0).toFixed(2));
+    const step1 = getStep1Parts(item);
+    const step2 = getStep2Parts(item);
+    const gRef = `G${r}`, hRef = `H${r}`, iRef = `I${r}`, fRef = `F${r}`;
+    const step1Formula = step1.op==='mul' ? `${gRef}*${step1.val}` : step1.op==='div' ? `${gRef}/${step1.val}` : `${gRef}`;
+    const step2Formula = step2.op==='mul' ? `${hRef}*${step2.val}` : step2.op==='div' ? `${hRef}/${step2.val}` : `${hRef}`;
+    const totalFormula = `${iRef}*${fRef}`;
+    return {
+      row:r, no, pn:item.pn||'', type:catLabel(item.cat), product:item.product||'', desc:item.desc||'', qty,
+      orig, step1Formula, step1Value:Number(eff.vecow.toFixed(2)),
+      step2Formula, step2Value:Number(eff.client.toFixed(2)),
+      totalFormula, totalValue:Number((eff.client*qty).toFixed(2))
+    };
+  }
+  function clientRowObj(row, no, r){
+    if(!row.merged){
+      const item = row.items[0]; const eff = getEffective(item);
+      return { row:r, no, type:catLabel(item.cat), product:item.product||'', desc:item.desc||'', qty:item.qty,
+        unitPrice:Number(eff.client.toFixed(2)), total:Number((eff.client*item.qty).toFixed(2)), note:resolveNoteText(item) };
+    }
+    const s = mergedRowSummary(row);
+    return { row:r, no, type:s.types, product:s.products, desc:s.descs, qty:1, unitPrice:null, total:Number(s.total.toFixed(2)), note:s.noteText };
+  }
+
+  const mainItems = items.filter(i=>!MEM_CATS.includes(i.cat));
+  const { mainRows, memRows } = splitItemsForDisplay(items);
+  const memItemsList = items.filter(i=>MEM_CATS.includes(i.cat));
+
+  const r0 = headRow+1;
+  const mainVecowRows = mainItems.map((item,idx)=>vecowRowObj(item, idx+1, r0+idx));
+  const mainClientRows = mainRows.map((row,idx)=>clientRowObj(row, idx+1, r0+idx));
+  const vecowNextRow = r0 + mainItems.length;
+  const clientNextRow = r0 + mainRows.length;
+
+  const payload = {
+    sheetName: qNo || 'Quotation',
+    qNo, dateLabel, clientName,
+    titleText: `${qNo} Quotation _ ${dateLabel}`,
+    clientLine: clientName ? ('Client: ' + clientName) : '',
+    headRow,
+    vecowHeaders: ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','U/P (USD)','Total (USD)'],
+    clientHeaders: ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'],
+    mainVecowRows, mainClientRows
+  };
+
+  if(memItemsList.length || memRows.length){
+    const sectionRow = Math.max(vecowNextRow, clientNextRow) + 1;
+    const memHeadRow = sectionRow + 1;
+    const r1 = memHeadRow + 1;
+    payload.memSectionRow = sectionRow;
+    payload.memHeadRow = memHeadRow;
+    payload.memVecowRows = memItemsList.map((item,idx)=>vecowRowObj(item, idx+1, r1+idx));
+    payload.memClientRows = memRows.map((row,idx)=>clientRowObj(row, idx+1, r1+idx));
+  }
+  return payload;
+}
+
+async function getSheetsWebAppUrl(forcePrompt){
+  let url = '';
+  try{ url = localStorage.getItem(SHEETS_URL_KEY) || ''; }catch(e){}
+  if(url && !forcePrompt) return url;
+  const entered = await appPrompt(
+    forcePrompt ? 'Update the Google Sheets link (Apps Script Web App URL):' : 'Paste your Google Sheets Web App link (one-time setup — see the setup guide for how to get it):',
+    'https://script.google.com/a/macros/vecow.com/s/AKfycbzehO6tCItbsyIZmsgI-HqHASHrLpen0QQ34Yql-zPjI5YZnEXyI6aFBHKhKkPqauFChA/exec',
+    url
+  );
+  if(!entered) return null;
+  try{ localStorage.setItem(SHEETS_URL_KEY, entered); }catch(e){}
+  return entered;
+}
+
+async function changeSheetsLink(){
+  const url = await getSheetsWebAppUrl(true);
+  if(url) toast('Google Sheets link saved', 'success');
+}
+
+async function sendToGoogleSheets(){
+  if(items.length===0){ await appAlert('Add items first'); return; }
+  const url = await getSheetsWebAppUrl(false);
+  if(!url) return;
+  const payload = buildGoogleSheetPayload();
+  const btn = document.getElementById('sheetsSendBtn');
+  const originalLabel = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Sending…'; }
+  try{
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, // avoids a CORS preflight against Apps Script
+      body: JSON.stringify(payload)
+    });
+    let result = null;
+    try{ result = await res.json(); }catch(e){}
+    if(result && result.ok){
+      toast(`Added to Google Sheets as "${result.sheetName || payload.sheetName}"`, 'success');
+    } else {
+      toast('Google Sheets rejected the request: ' + ((result && result.error) || 'check the link is correct and deployed as "Anyone"'), 'error');
+    }
+  } catch(e){
+    console.error(e);
+    toast('Could not reach Google Sheets. Check your connection and the saved link.', 'error');
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
+  }
 }
 </script>
 </body>
