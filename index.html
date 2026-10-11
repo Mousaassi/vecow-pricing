@@ -2642,18 +2642,22 @@ async function sendToGoogleSheets(){
   const originalLabel = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = 'Sending…'; }
   try{
-    const res = await fetch(url, {
+    // Apps Script's /exec URL redirects internally to run the script, and that
+    // second response doesn't carry CORS headers for a page hosted outside
+    // Google's own domains — so the browser blocks fetch() from ever reading
+    // a reply, even though the request itself goes through and runs doPost().
+    // mode:'no-cors' sends the POST without trying to read that blocked
+    // response, which is the standard way to call an Apps Script web app
+    // from an external page. The trade-off: we can no longer confirm success
+    // or surface a script-side error from here — only a real network failure
+    // (no connection, bad/unreachable URL) will throw below.
+    await fetch(url, {
       method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'}, // avoids a CORS preflight against Apps Script
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify(payload)
     });
-    let result = null;
-    try{ result = await res.json(); }catch(e){}
-    if(result && result.ok){
-      toast(`Added to Google Sheets as "${result.sheetName || payload.sheetName}"`, 'success');
-    } else {
-      toast('Google Sheets rejected the request: ' + ((result && result.error) || 'check the link is correct and deployed as "Anyone"'), 'error');
-    }
+    toast(`Sent to Google Sheets — check the "${payload.sheetName}" tab to confirm it landed`, 'success');
   } catch(e){
     console.error(e);
     toast('Could not reach Google Sheets. Check your connection and the saved link.', 'error');
