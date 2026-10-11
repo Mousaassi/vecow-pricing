@@ -2620,7 +2620,7 @@ async function getSheetsWebAppUrl(forcePrompt){
   if(url && !forcePrompt) return url;
   const entered = await appPrompt(
     forcePrompt ? 'Update the Google Sheets link (Apps Script Web App URL):' : 'Paste your Google Sheets Web App link (one-time setup — see the setup guide for how to get it):',
-    'https://script.google.com/macros/s/AKfycbx686bNfhcIbKg90EtXhRhu1-ulZyNZhYGYIt5qWzlEE_AuKX68yTw77-jWR3NYzm5U/exec',
+    'https://script.google.com/macros/s/XXXXXXXX/exec',
     url
   );
   if(!entered) return null;
@@ -2642,21 +2642,26 @@ async function sendToGoogleSheets(){
   const originalLabel = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = 'Sending…'; }
   try{
-    // Apps Script's /exec URL redirects internally to run the script, and that
-    // second response doesn't carry CORS headers for a page hosted outside
-    // Google's own domains — so the browser blocks fetch() from ever reading
-    // a reply, even though the request itself goes through and runs doPost().
-    // mode:'no-cors' sends the POST without trying to read that blocked
-    // response, which is the standard way to call an Apps Script web app
-    // from an external page. The trade-off: we can no longer confirm success
-    // or surface a script-side error from here — only a real network failure
-    // (no connection, bad/unreachable URL) will throw below.
-    await fetch(url, {
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify(payload)
-    });
+    // Apps Script's /exec URL internally redirects to run the script. For a
+    // POST request, that redirect gets re-sent by the browser as a GET
+    // (standard redirect behavior for POST + 301/302), which silently drops
+    // the request body — so doPost() never runs and doGet() answers instead,
+    // even though fetch() itself reports "success". A GET request has no
+    // body to lose, so we send the payload as a query parameter instead —
+    // this is the reliable way to reach an Apps Script web app from a page
+    // hosted outside Google's own domains.
+    const json = JSON.stringify(payload);
+    const encoded = encodeURIComponent(json);
+    if(encoded.length > 6000){
+      toast('This quotation is too large to send this way (too many rows). Use "Export Excel" and paste it in manually for this one.', 'error');
+      return;
+    }
+    const sep = url.includes('?') ? '&' : '?';
+    await fetch(`${url}${sep}payload=${encoded}`, { method:'GET', mode:'no-cors' });
+    // The response itself is unreadable from here (cross-origin, no CORS
+    // headers from Apps Script) — the toast below is a best effort, not a
+    // confirmed receipt. If rows don't show up, check the Apps Script
+    // project's "Executions" log for the real error.
     toast(`Sent to Google Sheets — check the "${payload.sheetName}" tab to confirm it landed`, 'success');
   } catch(e){
     console.error(e);
