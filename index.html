@@ -26,6 +26,15 @@
   color-scheme: light;
 }
 *{box-sizing:border-box;}
+/* theme switch — these properties animate smoothly when a CSS variable they
+   reference changes (e.g. clicking a theme swatch), instead of the whole
+   page hard-snapping to new colors. Scoped to the elements that actually
+   carry themed color, not a blanket `*` rule, so it never fights a more
+   specific transition (button hover, focus rings, etc). */
+body, .card, .stat-card, .maintabs, .maintab, .tab-btn, .theme-picker, .sync-status, .user-box,
+input, select, textarea, table, th, td, .compat-tab, .pn-preview, .new-device-fields{
+  transition:background-color .3s ease, border-color .3s ease, color .3s ease;
+}
 ::selection{background:var(--accent); color:#fff;}
 ::-webkit-scrollbar{width:11px; height:11px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -91,7 +100,12 @@ header.top{
 .maintab.active{color:#fff; background:linear-gradient(135deg,var(--navy),var(--navy-2)); box-shadow:0 2px 6px rgba(10,24,48,.25);}
 
 /* cards */
-.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-bottom:20px; box-shadow:var(--shadow); transition:box-shadow .15s;}
+.card{
+  position:relative; overflow:hidden; background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+  padding:24px; margin-bottom:20px; box-shadow:var(--shadow);
+  transition:box-shadow .15s, background-color .3s ease, border-color .3s ease;
+}
+.card::before{content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--navy),var(--accent)); transition:background .3s ease;}
 .card h2{margin:0 0 18px; font-size:1.05rem; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:9px; font-family:"Manrope",sans-serif;}
 .card h2 .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block; box-shadow:0 0 0 4px rgba(176,141,63,.15);}
 
@@ -240,8 +254,16 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
 .card:nth-of-type(4){animation-delay:.2s;}
 .card:nth-of-type(5){animation-delay:.26s;}
 .card:nth-of-type(n+6){animation-delay:.3s;}
+
+/* main-tab switch — the whole panel settles in as one deliberate moment
+   (distinct from the subtler per-card cascade above), so moving between
+   Dashboard / Quotation / Catalog / Add-ons reads as a real page change
+   instead of content just appearing. */
+@keyframes panel-in{from{opacity:0; transform:translateY(14px) scale(.994);} to{opacity:1; transform:translateY(0) scale(1);}}
+.tab-panel-enter{animation:panel-in .38s cubic-bezier(.16,1,.3,1) both;}
+.maintab{position:relative;}
 @media(prefers-reduced-motion: reduce){
-  .card,.modal-box,.auth-card{animation:none !important;}
+  .card,.modal-box,.auth-card,.tab-panel-enter{animation:none !important;}
   *{scroll-behavior:auto !important;}
 }
 
@@ -848,10 +870,20 @@ function setMainTab(tab){
   document.getElementById('mtQuotation').classList.toggle('active', tab==='quotation');
   document.getElementById('mtCatalog').classList.toggle('active', tab==='catalog');
   document.getElementById('mtAddons').classList.toggle('active', tab==='addons');
-  document.getElementById('tabDashboard').style.display = tab==='dashboard' ? '' : 'none';
-  document.getElementById('tabQuotation').style.display = tab==='quotation' ? '' : 'none';
-  document.getElementById('tabCatalog').style.display = tab==='catalog' ? '' : 'none';
-  document.getElementById('tabAddons').style.display = tab==='addons' ? '' : 'none';
+  const panels = { dashboard:'tabDashboard', quotation:'tabQuotation', catalog:'tabCatalog', addons:'tabAddons' };
+  Object.keys(panels).forEach(key=>{
+    const el = document.getElementById(panels[key]);
+    if(key===tab){
+      el.style.display = '';
+      // Restart the entrance animation every time this panel is shown
+      // (re-adding the same class is a no-op without a reflow in between).
+      el.classList.remove('tab-panel-enter');
+      void el.offsetWidth;
+      el.classList.add('tab-panel-enter');
+    } else {
+      el.style.display = 'none';
+    }
+  });
   document.getElementById('statRow').style.display = tab==='quotation' ? '' : 'none';
   if(tab==='dashboard') renderDashboard();
 }
@@ -2322,8 +2354,13 @@ function setTab(tab){
   currentTab = tab;
   document.getElementById('tabVecowBtn').classList.toggle('active', tab==='vecow');
   document.getElementById('tabClientBtn').classList.toggle('active', tab==='client');
-  document.getElementById('previewVecow').style.display = tab==='vecow' ? '' : 'none';
-  document.getElementById('previewClient').style.display = tab==='client' ? '' : 'none';
+  const vecowEl = document.getElementById('previewVecow'), clientEl = document.getElementById('previewClient');
+  vecowEl.style.display = tab==='vecow' ? '' : 'none';
+  clientEl.style.display = tab==='client' ? '' : 'none';
+  const shown = tab==='vecow' ? vecowEl : clientEl;
+  shown.classList.remove('tab-panel-enter');
+  void shown.offsetWidth;
+  shown.classList.add('tab-panel-enter');
 }
 
 function vecowTableHtml(list){
@@ -2650,14 +2687,28 @@ async function sendToGoogleSheets(){
     // body to lose, so we send the payload as a query parameter instead —
     // this is the reliable way to reach an Apps Script web app from a page
     // hosted outside Google's own domains.
+    //
+    // A single GET still has a URL-length ceiling though, and a quotation
+    // with many rows can blow past it. So instead of sending the whole
+    // payload in one request, it's base64-encoded then split into small
+    // chunks sent as a short sequence of GET requests (the script
+    // reassembles them on its side before writing the sheet) — this removes
+    // the size limit entirely, at the cost of a few extra round-trips for a
+    // large quotation.
     const json = JSON.stringify(payload);
-    const encoded = encodeURIComponent(json);
-    if(encoded.length > 6000){
-      toast('This quotation is too large to send this way (too many rows). Use "Export Excel" and paste it in manually for this one.', 'error');
-      return;
-    }
+    // unescape(encodeURIComponent(...)) turns the UTF-8 bytes of the JSON
+    // (Arabic text included) into a byte string btoa() can encode safely.
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    const CHUNK_SIZE = 1500; // characters of base64 per request — comfortably under any URL length limit
+    const chunks = [];
+    for(let i=0;i<b64.length;i+=CHUNK_SIZE) chunks.push(b64.slice(i, i+CHUNK_SIZE));
+    const reqId = 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
     const sep = url.includes('?') ? '&' : '?';
-    await fetch(`${url}${sep}payload=${encoded}`, { method:'GET', mode:'no-cors' });
+    for(let i=0;i<chunks.length;i++){
+      if(btn && chunks.length>1) btn.textContent = `Sending… ${i+1}/${chunks.length}`;
+      const qs = `action=chunk&id=${reqId}&i=${i}&n=${chunks.length}&d=${encodeURIComponent(chunks[i])}`;
+      await fetch(`${url}${sep}${qs}`, { method:'GET', mode:'no-cors' });
+    }
     // The response itself is unreadable from here (cross-origin, no CORS
     // headers from Apps Script) — the toast below is a best effort, not a
     // confirmed receipt. If rows don't show up, check the Apps Script
