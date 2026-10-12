@@ -2598,24 +2598,33 @@ function buildGoogleSheetPayload(){
     const step1 = getStep1Parts(item);
     const step2 = getStep2Parts(item);
     const gRef = `G${r}`, hRef = `H${r}`, iRef = `I${r}`, fRef = `F${r}`;
-    const step1Formula = step1.op==='mul' ? `${gRef}*${step1.val}` : step1.op==='div' ? `${gRef}/${step1.val}` : `${gRef}`;
-    const step2Formula = step2.op==='mul' ? `${hRef}*${step2.val}` : step2.op==='div' ? `${hRef}/${step2.val}` : `${hRef}`;
-    const totalFormula = `${iRef}*${fRef}`;
+    // Rounded to the nearest whole number (not just truncated/floored) —
+    // e.g. 1234.2857 -> 1234, 1234.5 or higher -> 1235 — same as Google
+    // Sheets' own ROUND(x, 0), applied directly in the live formula so the
+    // cell itself always shows a whole number, not just a rounded display.
+    const step1Inner = step1.op==='mul' ? `${gRef}*${step1.val}` : step1.op==='div' ? `${gRef}/${step1.val}` : `${gRef}`;
+    const step2Inner = step2.op==='mul' ? `${hRef}*${step2.val}` : step2.op==='div' ? `${hRef}/${step2.val}` : `${hRef}`;
+    const step1Formula = `ROUND(${step1Inner},0)`;
+    const step2Formula = `ROUND(${step2Inner},0)`;
+    const totalFormula = `ROUND(${iRef}*${fRef},0)`;
     return {
       row:r, no, pn:item.pn||'', type:catLabel(item.cat), product:item.product||'', desc:item.desc||'', qty,
-      orig, step1Formula, step1Value:Number(eff.vecow.toFixed(2)),
-      step2Formula, step2Value:Number(eff.client.toFixed(2)),
-      totalFormula, totalValue:Number((eff.client*qty).toFixed(2))
+      orig, step1Formula, step1Value:Math.round(eff.vecow),
+      step2Formula, step2Value:Math.round(eff.client),
+      totalFormula, totalValue:Math.round(eff.client*qty)
     };
   }
   function clientRowObj(row, no, r){
     if(!row.merged){
+      // Rounded to match the Vecow block's rounded U/P, so the two sides of
+      // the sheet always agree instead of one showing decimals the other doesn't.
       const item = row.items[0]; const eff = getEffective(item);
+      const roundedUnit = Math.round(eff.client);
       return { row:r, no, type:catLabel(item.cat), product:item.product||'', desc:item.desc||'', qty:item.qty,
-        unitPrice:Number(eff.client.toFixed(2)), total:Number((eff.client*item.qty).toFixed(2)), note:resolveNoteText(item) };
+        unitPrice:roundedUnit, total:Math.round(roundedUnit*item.qty), note:resolveNoteText(item) };
     }
     const s = mergedRowSummary(row);
-    return { row:r, no, type:s.types, product:s.products, desc:s.descs, qty:1, unitPrice:null, total:Number(s.total.toFixed(2)), note:s.noteText };
+    return { row:r, no, type:s.types, product:s.products, desc:s.descs, qty:1, unitPrice:null, total:Math.round(s.total), note:s.noteText };
   }
 
   const mainItems = items.filter(i=>!MEM_CATS.includes(i.cat));
