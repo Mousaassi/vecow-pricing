@@ -1488,7 +1488,10 @@ async function maybeSaveNewPnToCatalog(pn, cat, product, desc, price, compatSeri
   const chk = document.getElementById('saveToCatalogChk');
   if(chk && !chk.checked) return;
   if(usingCloud){
-    try{ await sb.from('catalog').insert({pn, cat, product, description:desc, price, compatible_series: compatSeries||'', created_at: Date.now()}); }
+    try{
+      await sb.from('catalog').insert({pn, cat, product, description:desc, price, compatible_series: compatSeries||'', created_at: Date.now()});
+      await refetchCatalog();
+    }
     catch(e){ console.error(e); }
   } else {
     catalog.push({id:'local_cat_'+(localCatIdSeq++), pn, cat, product, desc, price, compatSeries: compatSeries||'', createdAt: Date.now()});
@@ -1641,6 +1644,7 @@ async function addAddonItem(){
       compatible_series: data.compatibleSeries, created_at: data.createdAt
     });
     if(error){ console.error(error); await appAlert('Could not save to the cloud add-ons list.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
+    await refetchAddons();
   } else {
     data.id = 'local_addon_' + (localAddonIdSeq++);
     addons.push(data);
@@ -1653,7 +1657,8 @@ async function removeAddon(id){
   if(!(await appConfirm('Remove this add-on?'))) return;
   if(usingCloudAddons){
     const { error } = await sb.from('addons').delete().eq('id', id);
-    if(error) console.error(error);
+    if(error){ console.error(error); toast('Could not delete — try again', 'error'); return; }
+    await refetchAddons();
   } else {
     addons = addons.filter(a=>a.id!==id);
     saveLocalAddons();
@@ -1665,7 +1670,8 @@ async function updateAddonField(id, field, value){
   if(usingCloudAddons){
     const col = addonFieldToColumn[field];
     const { error } = await sb.from('addons').update({[col]: value}).eq('id', id);
-    if(error) console.error(error);
+    if(error){ console.error(error); toast('Could not save that change', 'error'); return; }
+    await refetchAddons();
   } else {
     const a = addons.find(a=>a.id===id);
     if(!a) return;
@@ -1752,6 +1758,9 @@ async function addCatalogItem(){
       }
       return;
     }
+    // Refetch immediately — don't rely on the Realtime round-trip — so the new
+    // device shows up in the catalog table and PN search right away.
+    await refetchCatalog();
   } else {
     data.id = 'local_cat_' + (localCatIdSeq++);
     catalog.push(data);
@@ -1774,7 +1783,8 @@ async function removeCatalogItem(id){
   if(!(await appConfirm('Remove this device from the catalog?'))) return;
   if(usingCloud){
     const { error } = await sb.from('catalog').delete().eq('id', id);
-    if(error) console.error(error);
+    if(error){ console.error(error); toast('Could not delete — try again', 'error'); return; }
+    await refetchCatalog();
   } else {
     catalog = catalog.filter(c=>c.id!==id);
     saveLocalCatalog();
@@ -1791,6 +1801,7 @@ async function deleteSelectedCatalogItems(){
   if(usingCloud){
     const { error } = await sb.from('catalog').delete().in('id', ids);
     if(error){ console.error(error); await appAlert('Could not delete from the cloud catalog.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
+    await refetchCatalog();
   } else {
     const idSet = new Set(ids);
     catalog = catalog.filter(c=>!idSet.has(c.id));
@@ -1805,7 +1816,8 @@ async function updateCatalogField(id, field, value){
   if(usingCloud){
     const col = catFieldToColumn[field];
     const { error } = await sb.from('catalog').update({[col]: value}).eq('id', id);
-    if(error) console.error(error);
+    if(error){ console.error(error); toast('Could not save that change', 'error'); return; }
+    await refetchCatalog();
   } else {
     const c = catalog.find(c=>c.id===id);
     if(!c) return;
@@ -2244,7 +2256,13 @@ async function addItem(){
   }
 
   resetAddItemForm();
-  render();
+  if(usingCloud){
+    // Refetch immediately instead of waiting on the Realtime round-trip, so the
+    // new line (and any compatible add-ons added alongside it) show up right away.
+    await refetchItems();
+  } else {
+    render();
+  }
   toast(`${product} added to quotation`, 'success');
 }
 
@@ -2276,7 +2294,10 @@ async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier, cat)
 async function removeItem(id){
   if(usingCloud){
     const { error } = await sb.from('items').delete().eq('id', id);
-    if(error) console.error(error);
+    if(error){ console.error(error); toast('Could not delete — try again', 'error'); return; }
+    // Don't wait for the Realtime round-trip to confirm the delete — refetch
+    // right away so the row disappears immediately instead of needing a page reload.
+    await refetchItems();
   } else {
     items = items.filter(i=>i.id!==id);
     saveLocalItems();
@@ -2287,7 +2308,8 @@ async function updateField(id, field, value){
   if(usingCloud){
     const col = fieldToColumn[field];
     const { error } = await sb.from('items').update({[col]: value}).eq('id', id);
-    if(error) console.error(error);
+    if(error){ console.error(error); toast('Could not save that change', 'error'); return; }
+    await refetchItems();
   } else {
     const item = items.find(i=>i.id===id);
     if(!item) return;
@@ -2722,7 +2744,11 @@ function buildGoogleSheetPayload(){
       row:r, no, pn:item.pn||'', type:catLabel(item.cat), product:item.product||'', desc:item.desc||'', qty,
       orig, step1Formula, step1Value:Math.round(eff.vecow),
       step2Formula, step2Value:Math.round(eff.client),
-      totalFormula, totalValue:Math.round(eff.client*qty)
+      totalFormula, totalValue:Math.round(eff.client*qty),
+      // Raw op/val (not just the Sheets formula string) so the "calculation
+      // steps" breakdown table can print readable arithmetic, e.g. "1555 x 0.9".
+      step1Op: step1.op || null, step1Val: (step1.val!==null && step1.val!==undefined) ? step1.val : null,
+      step2Op: step2.op || null, step2Val: (step2.val!==null && step2.val!==undefined) ? step2.val : null
     };
   }
   function clientRowObj(row, no, r){
