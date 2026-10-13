@@ -795,31 +795,15 @@ html[data-theme="burgundy"]{
   <!-- ===================== ADD-ONS TAB ===================== -->
   <div id="tabAddons" class="vt-panel" style="display:none;">
     <div class="card">
-      <h2><span class="dot"></span>Add a general add-on</h2>
-      <div class="hint" style="margin:0 0 14px;">Add-ons here (WiFi, Bluetooth, 4G, 5G, etc.) show up as quick checkboxes when adding any device to a quotation. For a one-off add-on that only applies to a single device, use the "One-off add-on" field instead — no need to save it here.</div>
-      <div class="form-grid">
-        <div class="f3"><label>PN</label><input id="ad_pn" placeholder="e.g. 77-H60EW26-G18"></div>
-        <div class="f3"><label>Add-on name</label><input id="ad_name" placeholder="e.g. WiFi 6 Module"></div>
-        <div class="f3"><label>Description (optional)</label><input id="ad_desc" placeholder="Notes / specs"></div>
-        <div class="f3"><label>Price (USD/unit)</label><input id="ad_price" type="number" min="0" step="0.01" placeholder="0.00"></div>
-        <div class="f12">
-          <label>Compatible device series (optional)</label>
-          <input id="ad_series" placeholder="e.g. ECX-3000, ECX-3200, EAC-4000 — comma separated">
-          <div class="hint">Leave empty to make this add-on show up for every device (universal). Use the series prefix as it appears in the Product field — e.g. "ECX-3000" will match ECX-3000, ECX-3000V, ECX-3000-PEG, ECX-3000-PoE…</div>
-        </div>
-        <div class="f12" style="display:flex; justify-content:flex-end;"><button class="btn-primary" onclick="addAddonItem()">+ Add add-on</button></div>
-      </div>
-    </div>
-
-    <div class="card">
       <h2><span class="dot"></span>All add-ons</h2>
+      <div class="hint" style="margin:0 0 14px;">Add-ons here (WiFi, Bluetooth, 4G, 5G, etc.) show up as quick checkboxes when adding any device to a quotation. For a one-off add-on that only applies to a single device, use the "One-off add-on" field on the device itself instead.</div>
       <input id="addonSearch" placeholder="Search add-ons…" oninput="renderAddons()">
       <div class="table-scroll" style="margin-top:12px;">
         <table id="addonsTable">
           <thead><tr><th>PN</th><th>Name</th><th>Description</th><th>Compatible series</th><th>Price (USD)</th><th></th></tr></thead>
           <tbody id="addonsBody"></tbody>
         </table>
-        <div id="addonsEmptyState" class="empty-state">🔌 No add-ons yet — add your first one above.</div>
+        <div id="addonsEmptyState" class="empty-state">🔌 No add-ons saved yet.</div>
       </div>
     </div>
   </div>
@@ -1692,7 +1676,7 @@ function renderAddons(){
   ) : addons;
 
   body.innerHTML = '';
-  if(addons.length===0){ empty.style.display='block'; empty.textContent = 'No add-ons yet — add your first one above.'; }
+  if(addons.length===0){ empty.style.display='block'; empty.textContent = 'No add-ons saved yet.'; }
   else if(filtered.length===0){ empty.style.display='block'; empty.textContent = 'No matches for this search.'; }
   else { empty.style.display='none'; }
 
