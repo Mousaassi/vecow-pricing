@@ -31,7 +31,7 @@
    page hard-snapping to new colors. Scoped to the elements that actually
    carry themed color, not a blanket `*` rule, so it never fights a more
    specific transition (button hover, focus rings, etc). */
-body, .card, .stat-card, .maintabs, .maintab, .tab-btn, .theme-picker, .sync-status, .user-box,
+body, .card, .stat-card, .sidebar, .sidebar-link, .tab-btn, .theme-picker, .sync-status, .user-box,
 input, select, textarea, table, th, td, .compat-tab, .pn-preview, .new-device-fields{
   transition:background-color .3s ease, border-color .3s ease, color .3s ease;
 }
@@ -61,21 +61,52 @@ body::before{
   background:linear-gradient(90deg, var(--navy) 0%, var(--accent) 50%, var(--navy) 100%);
 }
 .display{font-family:"Manrope","Inter",sans-serif;}
-.wrap{max-width:none; width:100%; margin:0 auto; padding:24px 44px 90px; box-sizing:border-box;}
 
-/* header */
-header.top{
-  display:flex; align-items:center; justify-content:space-between; gap:16px;
-  padding:10px 4px 26px;
+/* ===== app shell: fixed sidebar + scrolling content, using the full
+   browser width instead of a centered column with margins ===== */
+.app-shell{display:flex; align-items:stretch; min-height:100vh;}
+.sidebar{
+  width:234px; flex:none; display:flex; flex-direction:column;
+  background:linear-gradient(185deg, var(--navy) 0%, var(--navy-2) 100%);
+  padding:22px 14px 18px; position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+  transition:background .3s ease;
 }
-.brand{display:flex; align-items:center; gap:12px;}
+.sidebar-brand{display:flex; align-items:center; gap:11px; padding:4px 8px 24px;}
 .brand-mark{
-  width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 55%,var(--accent) 130%);
-  color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem;
-  box-shadow:var(--shadow-md); border:1px solid rgba(176,141,63,.35); font-family:"Manrope",sans-serif;
+  width:40px; height:40px; border-radius:11px; background:linear-gradient(135deg,rgba(255,255,255,.16),var(--accent) 140%);
+  color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.05rem; flex:none;
+  box-shadow:0 2px 10px rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.3); font-family:"Manrope",sans-serif;
 }
-.brand-name{font-family:"Manrope",sans-serif; font-size:1.4rem; font-weight:800; letter-spacing:-.01em; color:var(--ink);}
-.brand-name .light{font-weight:500; color:var(--ink-soft); font-family:"Inter",sans-serif;}
+.brand-name{font-family:"Manrope",sans-serif; font-size:1.08rem; font-weight:800; letter-spacing:-.01em; color:#fff; line-height:1.2;}
+.brand-name .light{font-weight:500; color:rgba(255,255,255,.6); font-family:"Inter",sans-serif;}
+.sidebar .brand-subtitle{color:rgba(255,255,255,.45);}
+.sidebar-nav{display:flex; flex-direction:column; gap:2px; margin-top:6px;}
+.sidebar-link{
+  display:flex; align-items:center; gap:11px; width:100%; text-align:left; background:transparent; border:none;
+  color:rgba(255,255,255,.62); font-weight:700; font-size:.87rem; padding:11px 13px; border-radius:10px;
+  position:relative; transition:background .15s, color .15s;
+}
+.sidebar-link .ic{width:18px; text-align:center; flex:none; font-size:1rem; opacity:.9;}
+.sidebar-link:hover{background:rgba(255,255,255,.06); color:#fff;}
+.sidebar-link.active{background:rgba(255,255,255,.12); color:#fff;}
+.sidebar-link.active::before{content:""; position:absolute; left:-14px; top:8px; bottom:8px; width:3px; border-radius:0 3px 3px 0; background:var(--accent);}
+.sidebar-footer{margin-top:auto; display:flex; flex-direction:column; gap:10px; padding-top:14px;}
+.sidebar .theme-picker{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); box-shadow:none;}
+.sidebar .user-box{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); box-shadow:none;}
+.sidebar .user-email{color:rgba(255,255,255,.75);}
+.sidebar .btn-signout{border-color:rgba(255,255,255,.2); color:rgba(255,255,255,.65);}
+.sidebar .btn-signout:hover{border-color:var(--danger); color:#ff8f8f;}
+.main-content{flex:1; min-width:0; padding:28px 40px 90px;}
+@media(max-width:860px){
+  .app-shell{flex-direction:column;}
+  .sidebar{width:100%; height:auto; position:relative; flex-direction:row; align-items:center; padding:12px 16px; gap:14px; overflow-x:auto;}
+  .sidebar-brand{padding:0; flex:none;}
+  .sidebar-nav{flex-direction:row; margin-top:0;}
+  .sidebar-link.active::before{left:8px; right:8px; top:auto; bottom:-2px; height:3px; width:auto; border-radius:3px 3px 0 0;}
+  .sidebar-footer{margin-top:0; flex-direction:row; margin-inline-start:auto;}
+  .main-content{padding:20px 18px 70px;}
+}
+
 .sync-status{display:flex; align-items:center; gap:7px; font-size:.78rem; color:var(--ink-soft); background:var(--card); border:1px solid var(--line); padding:6px 12px; border-radius:20px; box-shadow:var(--shadow);}
 .sync-dot{width:7px;height:7px;border-radius:50%; background:#98a2b3; flex:none;}
 .sync-dot.on{background:var(--ok); box-shadow:0 0 0 3px var(--ok-bg);}
@@ -94,11 +125,6 @@ header.top{
 .stat-val.ok{color:var(--ok);} .stat-val.danger{color:var(--danger);}
 @media(max-width:900px){.stat-row{grid-template-columns:repeat(2,1fr);}}
 
-/* main tabs */
-.maintabs{display:flex; gap:6px; margin-bottom:20px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:5px; width:fit-content; box-shadow:var(--shadow);}
-.maintab{background:transparent; border:none; padding:9px 20px; font-size:.87rem; font-weight:700; color:var(--ink-soft); border-radius:10px; transition:background .2s, color .2s, box-shadow .2s;}
-.maintab.active{color:#fff; background:linear-gradient(135deg,var(--navy),var(--navy-2)); box-shadow:0 2px 6px rgba(10,24,48,.25);}
-
 /* cards */
 .card{
   position:relative; overflow:hidden; background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
@@ -108,6 +134,15 @@ header.top{
 .card::before{content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--navy),var(--accent)); transition:background .3s ease;}
 .card h2{margin:0 0 18px; font-size:1.05rem; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:9px; font-family:"Manrope",sans-serif;}
 .card h2 .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block; box-shadow:0 0 0 4px rgba(176,141,63,.15);}
+
+.quick-actions-row{display:flex; flex-wrap:wrap; gap:12px;}
+.quick-action-btn{
+  display:flex; align-items:center; gap:10px; flex:1 1 200px; padding:14px 16px; border-radius:var(--radius-sm);
+  border:1px solid var(--line); background:var(--bg-soft, var(--card)); color:var(--ink); font-weight:700; font-size:.88rem;
+  cursor:pointer; transition:border-color .15s, transform .15s, background .15s;
+}
+.quick-action-btn .ic{font-size:1.05rem; color:var(--accent);}
+.quick-action-btn:hover{border-color:var(--accent); transform:translateY(-1px);}
 
 label{display:block; font-size:.76rem; color:var(--ink-soft); font-weight:600; margin-bottom:5px;}
 input,select,textarea{
@@ -261,9 +296,22 @@ footer.foot{text-align:center; color:var(--ink-soft); font-size:.82rem; font-wei
    instead of content just appearing. */
 @keyframes panel-in{from{opacity:0; transform:translateY(14px) scale(.994);} to{opacity:1; transform:translateY(0) scale(1);}}
 .tab-panel-enter{animation:panel-in .38s cubic-bezier(.16,1,.3,1) both;}
-.maintab{position:relative;}
+
+/* Real cross-page transition via the View Transitions API (Chrome/Edge,
+   Safari 18+). When supported, document.startViewTransition() (see
+   setMainTab in the script) captures the before/after state and the
+   browser cross-fades + slides between them natively — no manual DOM
+   animation needed. These rules only take effect during that transition;
+   browsers without support simply ignore them and get the .tab-panel-enter
+   fallback above instead. */
+.vt-panel{view-transition-name:main-panel;}
+::view-transition-old(main-panel){animation:vt-out .22s cubic-bezier(.4,0,1,1) both;}
+::view-transition-new(main-panel){animation:vt-in .32s cubic-bezier(.16,1,.3,1) both;}
+@keyframes vt-out{to{opacity:0; transform:translateY(-8px);}}
+@keyframes vt-in{from{opacity:0; transform:translateY(10px);}}
 @media(prefers-reduced-motion: reduce){
   .card,.modal-box,.auth-card,.tab-panel-enter{animation:none !important;}
+  ::view-transition-old(*),::view-transition-new(*){animation:none !important;}
   *{scroll-behavior:auto !important;}
 }
 
@@ -337,17 +385,48 @@ html[data-theme="burgundy"]{
 .modal-actions{display:flex; justify-content:flex-end; gap:10px;}
 
 /* auth gate */
-.auth-overlay{position:fixed; inset:0; z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px;
-  background:radial-gradient(circle at 20% 10%, rgba(176,141,63,.16), transparent 45%), var(--navy);}
-.auth-card{background:var(--card); color:var(--ink); border-radius:22px; padding:40px 36px 32px; max-width:380px; width:100%;
-  box-shadow:0 24px 60px rgba(0,0,0,.35); text-align:center; animation:card-in .25s ease-out;}
-.auth-logo{display:flex; justify-content:center; margin-bottom:16px;}
-.auth-title{font-family:"Manrope",sans-serif; font-size:1.5rem; font-weight:800; margin:0; color:var(--ink);}
+.auth-overlay{position:fixed; inset:0; z-index:2000; display:flex; background:var(--navy);}
+.auth-visual{
+  flex:1 1 46%; position:relative; display:flex; align-items:center; justify-content:center; padding:48px;
+  background:
+    radial-gradient(circle at 15% 12%, rgba(176,141,63,.28), transparent 50%),
+    radial-gradient(circle at 85% 88%, rgba(176,141,63,.14), transparent 55%),
+    linear-gradient(160deg, #0a1830 0%, #0d2142 55%, #0a1830 100%);
+  overflow:hidden;
+}
+.auth-visual::before{
+  content:""; position:absolute; inset:0; opacity:.5; pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size:36px 36px;
+}
+.auth-visual-inner{position:relative; z-index:1; max-width:380px; color:#fff; text-align:left;}
+.auth-visual-inner .brand-mark{width:60px; height:60px; font-size:1.5rem; margin-bottom:26px;}
+.auth-visual-title{font-family:"Manrope",sans-serif; font-size:2.1rem; font-weight:800; margin:0 0 8px; color:#fff; line-height:1.1;}
+.auth-visual-title .light{font-weight:400; color:rgba(255,255,255,.55);}
+.auth-visual-tag{font-size:.74rem; letter-spacing:.1em; text-transform:uppercase; font-weight:700; color:var(--accent); margin-bottom:18px;}
+.auth-visual-desc{font-size:.92rem; line-height:1.65; color:rgba(255,255,255,.62); margin:0;}
+.auth-card{
+  flex:1 1 54%; background:var(--card); color:var(--ink); display:flex; flex-direction:column; justify-content:center;
+  padding:48px clamp(32px, 7vw, 96px); max-width:520px; margin-inline:auto; width:100%;
+  animation:card-in .25s ease-out;
+}
+.auth-card-head{margin-bottom:28px;}
+.auth-logo{display:none;}
+.auth-title{font-family:"Manrope",sans-serif; font-size:1.6rem; font-weight:800; margin:0; color:var(--ink);}
 .auth-title .light{font-weight:500; color:var(--ink-soft); font-family:"Inter",sans-serif;}
-.auth-subtitle{font-size:.72rem; color:var(--ink-soft); margin-top:5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700;}
+.auth-subtitle{font-size:.85rem; color:var(--ink-soft); margin-top:6px; font-weight:500;}
 .auth-card .auth-field{margin-top:16px; text-align:left;}
 .auth-error{background:var(--danger-bg); color:var(--danger); font-size:.8rem; font-weight:600; padding:9px 12px; border-radius:var(--radius-sm); margin-top:14px; text-align:left;}
 .auth-hint{font-size:.72rem; color:var(--ink-soft); margin-top:20px; line-height:1.55;}
+@media(max-width:860px){
+  .auth-overlay{flex-direction:column; overflow-y:auto;}
+  .auth-visual{flex:none; padding:36px 28px;}
+  .auth-visual-inner{max-width:none;}
+  .auth-visual-desc{display:none;}
+  .auth-card{flex:none; padding:36px 28px 40px; max-width:none; margin:0;}
+  .auth-logo{display:flex; justify-content:flex-start; margin-bottom:14px;}
+  .auth-logo .brand-mark{width:44px; height:44px; font-size:1.15rem;}
+}
 #appRoot{display:none;}
 
 /* data-loading overlay — shown briefly while the first Supabase round-trip
@@ -384,10 +463,20 @@ html[data-theme="burgundy"]{
 <body>
 
 <div id="authGate" class="auth-overlay">
+  <div class="auth-visual">
+    <div class="auth-visual-inner">
+      <div class="brand-mark">V</div>
+      <h1 class="auth-visual-title">Vecow <span class="light">Tech</span></h1>
+      <div class="auth-visual-tag">Pricing &amp; Quotation Tool</div>
+      <p class="auth-visual-desc">Edge computing and industrial automation hardware — build and send accurate quotations in minutes.</p>
+    </div>
+  </div>
   <div class="auth-card">
-    <div class="auth-logo"><div class="brand-mark" style="width:54px; height:54px; font-size:1.35rem;">V</div></div>
-    <h1 class="auth-title">Vecow <span class="light">Tech</span></h1>
-    <div class="auth-subtitle">Pricing &amp; Quotation Tool</div>
+    <div class="auth-logo"><div class="brand-mark">V</div></div>
+    <div class="auth-card-head">
+      <h1 class="auth-title">Welcome back</h1>
+      <div class="auth-subtitle">Sign in with your Vecow Tech account</div>
+    </div>
     <div class="auth-field">
       <label>Email</label>
       <input id="auth_email" type="email" placeholder="you@vecow.com" autocomplete="username">
@@ -407,21 +496,25 @@ html[data-theme="burgundy"]{
   <div class="loading-text" id="loadingText">Loading your pricing data…</div>
 </div>
 
-<div class="wrap" id="appRoot">
+<div class="app-shell" id="appRoot">
 
-  <header class="top">
-    <div class="brand">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
       <div class="brand-mark">V</div>
       <div>
         <div class="brand-name">Vecow <span class="light">Tech</span></div>
         <div class="brand-subtitle">Pricing &amp; Quotation Tool</div>
       </div>
     </div>
-    <div class="header-right">
-      <div class="user-box" id="userBox" style="display:none;">
-        <span class="user-email" id="userEmailLabel"></span>
-        <button class="btn-signout" onclick="signOut()">Sign out</button>
-      </div>
+
+    <nav class="sidebar-nav">
+      <button class="sidebar-link active" id="mtDashboard" onclick="setMainTab('dashboard')"><span class="ic">&#9733;</span>Dashboard</button>
+      <button class="sidebar-link" id="mtQuotation" onclick="setMainTab('quotation')"><span class="ic">&#128196;</span>Quotation</button>
+      <button class="sidebar-link" id="mtCatalog" onclick="setMainTab('catalog')"><span class="ic">&#128230;</span>Product Catalog</button>
+      <button class="sidebar-link" id="mtAddons" onclick="setMainTab('addons')"><span class="ic">&#10010;</span>Add-ons</button>
+    </nav>
+
+    <div class="sidebar-footer">
       <div class="theme-picker" id="themePicker">
         <button class="theme-chip" data-swatch="gold" title="Navy & Gold" style="background:linear-gradient(135deg,#0a1830 50%,#b08d3f 50%);" onclick="applyTheme('gold')"></button>
         <button class="theme-chip" data-swatch="ocean" title="Ocean Blue" style="background:linear-gradient(135deg,#0b2a4a 50%,#1d9bd8 50%);" onclick="applyTheme('ocean')"></button>
@@ -429,20 +522,27 @@ html[data-theme="burgundy"]{
         <button class="theme-chip" data-swatch="burgundy" title="Burgundy" style="background:linear-gradient(135deg,#3a0d1c 50%,#c9974a 50%);" onclick="applyTheme('burgundy')"></button>
         <button class="theme-chip" data-swatch="dark" title="Dark Mode" style="background:linear-gradient(135deg,#0d1526 50%,#d4b568 50%);" onclick="applyTheme('dark')"></button>
       </div>
+      <div class="user-box" id="userBox" style="display:none;">
+        <span class="user-email" id="userEmailLabel"></span>
+        <button class="btn-signout" onclick="signOut()">Sign out</button>
+      </div>
     </div>
-  </header>
+  </aside>
+
+  <div class="main-content">
 
   <div class="stat-row" id="statRow" style="display:none;"></div>
 
-  <div class="maintabs">
-    <button class="maintab active" id="mtDashboard" onclick="setMainTab('dashboard')">Dashboard</button>
-    <button class="maintab" id="mtQuotation" onclick="setMainTab('quotation')">Quotation</button>
-    <button class="maintab" id="mtCatalog" onclick="setMainTab('catalog')">Product Catalog</button>
-    <button class="maintab" id="mtAddons" onclick="setMainTab('addons')">Add-ons</button>
-  </div>
-
   <!-- ===================== DASHBOARD TAB ===================== -->
-  <div id="tabDashboard">
+  <div id="tabDashboard" class="vt-panel">
+    <div class="card quick-actions-card">
+      <h2><span class="dot"></span>Quick actions</h2>
+      <div class="quick-actions-row">
+        <button class="quick-action-btn" onclick="setMainTab('quotation')"><span class="ic">&#128196;</span>New / edit quotation</button>
+        <button class="quick-action-btn" onclick="setMainTab('catalog')"><span class="ic">&#128230;</span>Search product catalog</button>
+        <button class="quick-action-btn" onclick="setMainTab('addons')"><span class="ic">&#10010;</span>Manage add-ons</button>
+      </div>
+    </div>
     <div class="card">
       <h2><span class="dot"></span>Business overview</h2>
       <div class="live-strip" id="liveStrip"></div>
@@ -463,7 +563,7 @@ html[data-theme="burgundy"]{
   </div>
 
   <!-- ===================== QUOTATION TAB ===================== -->
-  <div id="tabQuotation" style="display:none;">
+  <div id="tabQuotation" class="vt-panel" style="display:none;">
 
     <div class="card">
       <h2><span class="dot"></span>Quotation details</h2>
@@ -594,7 +694,7 @@ html[data-theme="burgundy"]{
   </div>
 
   <!-- ===================== CATALOG TAB ===================== -->
-  <div id="tabCatalog" style="display:none;">
+  <div id="tabCatalog" class="vt-panel" style="display:none;">
     <div class="card">
       <h2><span class="dot"></span>Add a device</h2>
       <div class="form-grid">
@@ -693,7 +793,7 @@ html[data-theme="burgundy"]{
   </div>
 
   <!-- ===================== ADD-ONS TAB ===================== -->
-  <div id="tabAddons" style="display:none;">
+  <div id="tabAddons" class="vt-panel" style="display:none;">
     <div class="card">
       <h2><span class="dot"></span>Add a general add-on</h2>
       <div class="hint" style="margin:0 0 14px;">Add-ons here (WiFi, Bluetooth, 4G, 5G, etc.) show up as quick checkboxes when adding any device to a quotation. For a one-off add-on that only applies to a single device, use the "One-off add-on" field instead — no need to save it here.</div>
@@ -725,6 +825,7 @@ html[data-theme="burgundy"]{
   </div>
 
   <footer class="foot">Vecow Tech</footer>
+  </div>
 </div>
 <div id="toastHost"></div>
 <div id="confirmModal" class="modal-overlay" style="display:none;">
@@ -866,26 +967,36 @@ function toast(msg, type){
 }
 
 function setMainTab(tab){
-  document.getElementById('mtDashboard').classList.toggle('active', tab==='dashboard');
-  document.getElementById('mtQuotation').classList.toggle('active', tab==='quotation');
-  document.getElementById('mtCatalog').classList.toggle('active', tab==='catalog');
-  document.getElementById('mtAddons').classList.toggle('active', tab==='addons');
-  const panels = { dashboard:'tabDashboard', quotation:'tabQuotation', catalog:'tabCatalog', addons:'tabAddons' };
-  Object.keys(panels).forEach(key=>{
-    const el = document.getElementById(panels[key]);
-    if(key===tab){
-      el.style.display = '';
-      // Restart the entrance animation every time this panel is shown
-      // (re-adding the same class is a no-op without a reflow in between).
-      el.classList.remove('tab-panel-enter');
-      void el.offsetWidth;
-      el.classList.add('tab-panel-enter');
-    } else {
-      el.style.display = 'none';
-    }
-  });
-  document.getElementById('statRow').style.display = tab==='quotation' ? '' : 'none';
-  if(tab==='dashboard') renderDashboard();
+  const apply = () => {
+    document.getElementById('mtDashboard').classList.toggle('active', tab==='dashboard');
+    document.getElementById('mtQuotation').classList.toggle('active', tab==='quotation');
+    document.getElementById('mtCatalog').classList.toggle('active', tab==='catalog');
+    document.getElementById('mtAddons').classList.toggle('active', tab==='addons');
+    const panels = { dashboard:'tabDashboard', quotation:'tabQuotation', catalog:'tabCatalog', addons:'tabAddons' };
+    Object.keys(panels).forEach(key=>{
+      const el = document.getElementById(panels[key]);
+      if(key===tab){
+        el.style.display = '';
+        // Restart the entrance animation every time this panel is shown
+        // (re-adding the same class is a no-op without a reflow in between).
+        el.classList.remove('tab-panel-enter');
+        void el.offsetWidth;
+        el.classList.add('tab-panel-enter');
+      } else {
+        el.style.display = 'none';
+      }
+    });
+    document.getElementById('statRow').style.display = tab==='quotation' ? '' : 'none';
+    if(tab==='dashboard') renderDashboard();
+  };
+  // Use the real View Transitions API where the browser supports it, so the
+  // old panel cross-fades/slides into the new one instead of a hard swap.
+  // Falls back to the existing class-based entrance animation otherwise.
+  if(typeof document.startViewTransition === 'function'){
+    document.startViewTransition(apply);
+  } else {
+    apply();
+  }
 }
 
 function mapRowToItem(row){
@@ -1095,7 +1206,7 @@ function showAuthGate(msg){
 }
 function showApp(email){
   document.getElementById('authGate').style.display = 'none';
-  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('appRoot').style.display = 'flex';
   document.getElementById('userBox').style.display = 'flex';
   document.getElementById('userEmailLabel').textContent = email || '';
 }
@@ -2713,11 +2824,22 @@ async function sendToGoogleSheets(){
     for(let i=0;i<b64.length;i+=CHUNK_SIZE) chunks.push(b64.slice(i, i+CHUNK_SIZE));
     const reqId = 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
     const sep = url.includes('?') ? '&' : '?';
-    for(let i=0;i<chunks.length;i++){
-      if(btn && chunks.length>1) btn.textContent = `Sending… ${i+1}/${chunks.length}`;
-      const qs = `action=chunk&id=${reqId}&i=${i}&n=${chunks.length}&d=${encodeURIComponent(chunks[i])}`;
-      await fetch(`${url}${sep}${qs}`, { method:'GET', mode:'no-cors' });
-    }
+    // Send every chunk at once instead of waiting for each one before
+    // sending the next — much faster, especially for a large quotation.
+    // Order doesn't matter: each chunk just stores itself server-side by
+    // its own index. Once every chunk's request has actually come back
+    // (not just been fired — awaited, so each one has finished storing),
+    // a final "assemble everything now" request triggers the actual write.
+    let done = 0;
+    await Promise.all(chunks.map((chunk, i)=>{
+      const qs = `action=chunk&id=${reqId}&i=${i}&n=${chunks.length}&d=${encodeURIComponent(chunk)}`;
+      return fetch(`${url}${sep}${qs}`, { method:'GET', mode:'no-cors' }).then(()=>{
+        done++;
+        if(btn && chunks.length>1) btn.textContent = `Sending… ${done}/${chunks.length}`;
+      });
+    }));
+    const finalizeQs = `action=finalize&id=${reqId}&n=${chunks.length}`;
+    await fetch(`${url}${sep}${finalizeQs}`, { method:'GET', mode:'no-cors' });
     // The response itself is unreadable from here (cross-origin, no CORS
     // headers from Apps Script) — the toast below is a best effort, not a
     // confirmed receipt. If rows don't show up, check the Apps Script
