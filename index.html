@@ -511,7 +511,7 @@ html[data-theme="burgundy"]{
       <button class="sidebar-link active" id="mtDashboard" onclick="setMainTab('dashboard')"><span class="ic">&#9733;</span>Dashboard</button>
       <button class="sidebar-link" id="mtQuotation" onclick="setMainTab('quotation')"><span class="ic">&#128196;</span>Quotation</button>
       <button class="sidebar-link" id="mtCatalog" onclick="setMainTab('catalog')"><span class="ic">&#128230;</span>Product Catalog</button>
-      <button class="sidebar-link" id="mtAddons" onclick="setMainTab('addons')"><span class="ic">&#10010;</span>Add-ons</button>
+      <button class="sidebar-link" id="mtSettings" onclick="setMainTab('settings')"><span class="ic">&#9881;</span>Settings</button>
     </nav>
 
     <div class="sidebar-footer">
@@ -540,7 +540,6 @@ html[data-theme="burgundy"]{
       <div class="quick-actions-row">
         <button class="quick-action-btn" onclick="setMainTab('quotation')"><span class="ic">&#128196;</span>New / edit quotation</button>
         <button class="quick-action-btn" onclick="setMainTab('catalog')"><span class="ic">&#128230;</span>Search product catalog</button>
-        <button class="quick-action-btn" onclick="setMainTab('addons')"><span class="ic">&#10010;</span>Manage add-ons</button>
       </div>
     </div>
     <div class="card">
@@ -792,19 +791,12 @@ html[data-theme="burgundy"]{
     </div>
   </div>
 
-  <!-- ===================== ADD-ONS TAB ===================== -->
-  <div id="tabAddons" class="vt-panel" style="display:none;">
+  <!-- ===================== SETTINGS TAB ===================== -->
+  <div id="tabSettings" class="vt-panel" style="display:none;">
     <div class="card">
-      <h2><span class="dot"></span>All add-ons</h2>
-      <div class="hint" style="margin:0 0 14px;">Add-ons here (WiFi, Bluetooth, 4G, 5G, etc.) show up as quick checkboxes when adding any device to a quotation. For a one-off add-on that only applies to a single device, use the "One-off add-on" field on the device itself instead.</div>
-      <input id="addonSearch" placeholder="Search add-ons…" oninput="renderAddons()">
-      <div class="table-scroll" style="margin-top:12px;">
-        <table id="addonsTable">
-          <thead><tr><th>PN</th><th>Name</th><th>Description</th><th>Compatible series</th><th>Price (USD)</th><th></th></tr></thead>
-          <tbody id="addonsBody"></tbody>
-        </table>
-        <div id="addonsEmptyState" class="empty-state">🔌 No add-ons saved yet.</div>
-      </div>
+      <h2><span class="dot"></span>Type / category labels</h2>
+      <div class="hint" style="margin:0 0 14px;">Rename the Type labels used across the Quotation and Catalog tables (e.g. "Vecow System", "CPU", "RAM"). Saved in this browser — it won't show up on another computer or for a teammate unless they set the same label here too.</div>
+      <div id="settingsCatLabels" class="table-scroll"></div>
     </div>
   </div>
 
@@ -842,15 +834,12 @@ let usingCloud = false;
 /* ============ state ============ */
 let items = [];
 let catalog = [];
-let addons = [];
 let savedQuotations = [];
 let currentQuotationId = null;
 let localIdSeq = 1;
 let localCatIdSeq = 1;
-let localAddonIdSeq = 1;
 let localQuotationIdSeq = 1;
 let currentTab = 'vecow';
-let usingCloudAddons = false;
 let usingCloudQuotations = false;
 const MEM_CATS = ['3a','3b','3'];
 
@@ -955,8 +944,8 @@ function setMainTab(tab){
     document.getElementById('mtDashboard').classList.toggle('active', tab==='dashboard');
     document.getElementById('mtQuotation').classList.toggle('active', tab==='quotation');
     document.getElementById('mtCatalog').classList.toggle('active', tab==='catalog');
-    document.getElementById('mtAddons').classList.toggle('active', tab==='addons');
-    const panels = { dashboard:'tabDashboard', quotation:'tabQuotation', catalog:'tabCatalog', addons:'tabAddons' };
+    document.getElementById('mtSettings').classList.toggle('active', tab==='settings');
+    const panels = { dashboard:'tabDashboard', quotation:'tabQuotation', catalog:'tabCatalog', settings:'tabSettings' };
     Object.keys(panels).forEach(key=>{
       const el = document.getElementById(panels[key]);
       if(key===tab){
@@ -972,6 +961,7 @@ function setMainTab(tab){
     });
     document.getElementById('statRow').style.display = tab==='quotation' ? '' : 'none';
     if(tab==='dashboard') renderDashboard();
+    if(tab==='settings') renderSettings();
   };
   // Use the real View Transitions API where the browser supports it, so the
   // old panel cross-fades/slides into the new one instead of a hard swap.
@@ -999,9 +989,6 @@ function mapRowToItem(row){
 }
 function mapRowToCatalog(row){
   return { id: row.id, pn: row.pn, cat: row.cat, product: row.product, desc: row.description, price: row.price, note: row.note||'', compatSeries: row.compatible_series||'', brand: row.brand||'', cpuBuiltin: !!row.cpu_builtin, createdAt: row.created_at };
-}
-function mapRowToAddon(row){
-  return { id: row.id, pn: row.pn || '', name: row.name, desc: row.description || '', price: row.price, compatibleSeries: row.compatible_series || '', createdAt: row.created_at };
 }
 function mapRowToQuotation(row){
   return { id: row.id, qNo: row.q_no||'', qDate: row.q_date||'', qClient: row.q_client||'', items: row.items||[], createdAt: row.created_at, updatedAt: row.updated_at };
@@ -1032,13 +1019,12 @@ async function initPersistence(){
     if(typeof supabase === 'undefined') throw new Error('supabase-js failed to load');
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Fire all four initial reads in parallel (one round-trip instead of four
+    // Fire all initial reads in parallel (one round-trip instead of several
     // sequential ones) — this is what made the first load feel slow.
-    const [itemsRes, metaRes, catRes, addonRes, qRes] = await Promise.all([
+    const [itemsRes, metaRes, catRes, qRes] = await Promise.all([
       sb.from('items').select('*').order('created_at', {ascending:true}),
       sb.from('quotation_meta').select('*').eq('id',1).single(),
       sb.from('catalog').select('*').order('pn', {ascending:true}),
-      sb.from('addons').select('*').order('name', {ascending:true}),
       sb.from('quotations').select('*').order('created_at', {ascending:false})
     ]);
 
@@ -1055,20 +1041,6 @@ async function initPersistence(){
     }
 
     if(!catRes.error){ catalog = (catRes.data||[]).map(mapRowToCatalog); renderCatalog(); }
-
-    if(!addonRes.error){
-      addons = (addonRes.data||[]).map(mapRowToAddon);
-      usingCloudAddons = true;
-      renderAddons();
-      sb.channel('addons-sync')
-        .on('postgres_changes', {event:'*', schema:'public', table:'addons'}, ()=>{ refetchAddons(); })
-        .subscribe();
-    } else {
-      console.error('Add-ons table not available yet, falling back to local storage for add-ons:', addonRes.error);
-      usingCloudAddons = false;
-      try{ const raw = localStorage.getItem('vecow_addons'); if(raw) addons = JSON.parse(raw); }catch(e){ addons = []; }
-      renderAddons();
-    }
 
     if(!qRes.error){
       savedQuotations = (qRes.data||[]).map(mapRowToQuotation);
@@ -1122,18 +1094,12 @@ async function initPersistence(){
       if(raw) catalog = JSON.parse(raw);
     }catch(err){ catalog = []; }
     try{
-      const raw = localStorage.getItem('vecow_addons');
-      if(raw) addons = JSON.parse(raw);
-    }catch(err){ addons = []; }
-    usingCloudAddons = false;
-    try{
       const raw = localStorage.getItem('vecow_quotations');
       if(raw) savedQuotations = JSON.parse(raw);
     }catch(err){ savedQuotations = []; }
     usingCloudQuotations = false;
     render();
     renderCatalog();
-    renderAddons();
     updateCurrentQStatus();
     renderDashboard();
   } finally {
@@ -1149,11 +1115,6 @@ async function refetchCatalog(){
   const { data, error } = await sb.from('catalog').select('*').order('pn', {ascending:true});
   if(!error){ catalog = (data||[]).map(mapRowToCatalog); renderCatalog(); }
 }
-async function refetchAddons(){
-  const { data, error } = await sb.from('addons').select('*').order('name', {ascending:true});
-  if(!error){ addons = (data||[]).map(mapRowToAddon); renderAddons(); refreshCompatibilityBoxes(); }
-}
-
 async function refetchQuotations(){
   const { data, error } = await sb.from('quotations').select('*').order('created_at', {ascending:false});
   if(!error){ savedQuotations = (data||[]).map(mapRowToQuotation); renderDashboard(); }
@@ -1163,7 +1124,6 @@ function saveLocalQuotations(){ try{ localStorage.setItem('vecow_quotations', JS
 
 function saveLocalItems(){ try{ localStorage.setItem('vecow_items', JSON.stringify(items)); }catch(e){} }
 function saveLocalCatalog(){ try{ localStorage.setItem('vecow_catalog', JSON.stringify(catalog)); }catch(e){} }
-function saveLocalAddons(){ try{ localStorage.setItem('vecow_addons', JSON.stringify(addons)); }catch(e){} }
 
 async function saveMeta(){
   const meta = {
@@ -1334,13 +1294,51 @@ function getEffective(item){
   };
 }
 function profitPct(vecow, client){ if(!client) return 0; return ((client-vecow)/client)*100; }
+const DEFAULT_CAT_LABELS = {
+  '1a':'Vecow System', '1b':'Power Adaptor', '1':'Vecow System & Power Adaptor',
+  'cpu':'CPU', 'mod':'Module',
+  '2':'Other Items', 'gc':'Graphics Card', 'acc':'Accessory',
+  '3a':'RAM', '3b':'Storage', '3':'Memory & Storage', '4':'Outsourcing'
+};
+let catLabelOverrides = {};
+try{ catLabelOverrides = JSON.parse(localStorage.getItem('vecow_cat_label_overrides') || '{}'); }catch(e){ catLabelOverrides = {}; }
 function catLabel(cat){
-  return {
-    '1a':'Vecow System', '1b':'Power Adaptor', '1':'Vecow System & Power Adaptor',
-    'cpu':'CPU', 'mod':'Module',
-    '2':'Other Items', 'gc':'Graphics Card', 'acc':'Accessory',
-    '3a':'RAM', '3b':'Storage', '3':'Memory & Storage', '4':'Outsourcing'
-  }[cat] || cat;
+  return catLabelOverrides[cat] || DEFAULT_CAT_LABELS[cat] || cat;
+}
+function saveCatLabelOverride(cat, value){
+  const trimmed = (value||'').trim();
+  if(trimmed && trimmed !== DEFAULT_CAT_LABELS[cat]) catLabelOverrides[cat] = trimmed;
+  else delete catLabelOverrides[cat];
+  try{ localStorage.setItem('vecow_cat_label_overrides', JSON.stringify(catLabelOverrides)); }catch(e){}
+  // Re-render everywhere this label could appear.
+  render(); renderCatalog(); renderDashboard();
+  toast('Label updated', 'success');
+}
+function resetCatLabel(cat){
+  delete catLabelOverrides[cat];
+  try{ localStorage.setItem('vecow_cat_label_overrides', JSON.stringify(catLabelOverrides)); }catch(e){}
+  render(); renderCatalog(); renderDashboard(); renderSettings();
+  toast('Reset to default', 'success');
+}
+function renderSettings(){
+  const host = document.getElementById('settingsCatLabels');
+  if(!host) return;
+  const rows = Object.keys(DEFAULT_CAT_LABELS).map(cat=>{
+    const current = catLabel(cat);
+    const isOverridden = !!catLabelOverrides[cat];
+    return `<tr>
+      <td class="left-al" style="font-family:'JetBrains Mono',monospace; font-size:.78rem; color:var(--ink-soft);">${escapeHtml(cat)}</td>
+      <td class="left-al" style="color:var(--ink-soft);">${escapeHtml(DEFAULT_CAT_LABELS[cat])}</td>
+      <td class="left-al">
+        <input value="${escapeHtml(current)}" style="min-width:200px;" onchange="saveCatLabelOverride('${cat}', this.value)">
+      </td>
+      <td>${isOverridden ? `<button class="btn-outline" style="padding:6px 12px; font-size:.78rem;" onclick="resetCatLabel('${cat}')">Reset</button>` : ''}</td>
+    </tr>`;
+  }).join('');
+  host.innerHTML = `<table>
+    <thead><tr><th>Code</th><th>Default</th><th>Label shown</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
 function catClass(cat){
   if(cat==='1a' || cat==='1') return 'cat-1a';
@@ -1494,7 +1492,6 @@ function seriesMatches(seriesStr, productName){
   if(!prod) return false;
   return series.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean).some(tok=>prod.includes(tok));
 }
-function addonMatchesProduct(addon, productName){ return seriesMatches(addon.compatibleSeries, productName); }
 
 /* Compatibility suggestions (accessories / CPUs / add-ons) — a single tabbed panel.
    Only one category's list is open at a time, and a category never appears unless
@@ -1502,8 +1499,8 @@ function addonMatchesProduct(addon, productName){ return seriesMatches(addon.com
    tracked separately from the DOM (compatSelected) so switching tabs never loses
    what was already ticked on another tab. */
 let activeCompatTab = 'acc';
-const compatShowAll = { acc:false, cpu:false, addon:false };
-const compatSelected = { acc:new Set(), cpu:new Set(), addon:new Set() };
+const compatShowAll = { acc:false, cpu:false };
+const compatSelected = { acc:new Set(), cpu:new Set() };
 
 function getCompatCategoryData(productName){
   const accessoryCatalog = catalog.filter(c=>c.cat==='acc');
@@ -1519,9 +1516,6 @@ function getCompatCategoryData(productName){
     { key:'cpu', icon:'🖥', label:'CPUs', items:cpuEligible?cpuCatalog:[],
       matched: cpuEligible ? cpuCatalog.filter(c=> compatShowAll.cpu || seriesMatches(c.compatSeries, productName)) : [],
       eligible: cpuEligible && cpuCatalog.length>0, getName:c=>c.product },
-    { key:'addon', icon:'⚡', label:'Add-ons', items:addons,
-      matched: addons.filter(a=> compatShowAll.addon || addonMatchesProduct(a, productName)),
-      eligible: addons.length>0, getName:a=>a.name },
   ];
 }
 
@@ -1552,7 +1546,7 @@ function refreshCompatibilityBoxes(){
   renderCompatPanel(productName);
   box.style.display = 'block';
   const summary = document.getElementById('compatSelectedSummary');
-  const total = compatSelected.acc.size + compatSelected.cpu.size + compatSelected.addon.size;
+  const total = compatSelected.acc.size + compatSelected.cpu.size;
   summary.textContent = total>0 ? `${total} selected` : '';
 }
 
@@ -1605,93 +1599,9 @@ function renderCompatPanel(productName){
 }
 
 function resetCompatSelections(){
-  compatSelected.acc.clear(); compatSelected.cpu.clear(); compatSelected.addon.clear();
-  compatShowAll.acc = false; compatShowAll.cpu = false; compatShowAll.addon = false;
+  compatSelected.acc.clear(); compatSelected.cpu.clear();
+  compatShowAll.acc = false; compatShowAll.cpu = false;
   activeCompatTab = 'acc';
-}
-
-/* ============ add-ons: CRUD ============ */
-async function addAddonItem(){
-  const pn = document.getElementById('ad_pn').value.trim();
-  const name = document.getElementById('ad_name').value.trim();
-  const desc = document.getElementById('ad_desc').value.trim();
-  const priceRaw = document.getElementById('ad_price').value;
-  const series = document.getElementById('ad_series').value.trim();
-  if(!name){ await appAlert('Please enter the add-on name'); return; }
-  if(!priceRaw || Number(priceRaw)<0){ await appAlert('Please enter the price'); return; }
-
-  const data = { pn, name, desc, price: Number(priceRaw), compatibleSeries: series, createdAt: Date.now() };
-
-  if(usingCloudAddons){
-    const { error } = await sb.from('addons').insert({
-      pn: data.pn, name: data.name, description: data.desc, price: data.price,
-      compatible_series: data.compatibleSeries, created_at: data.createdAt
-    });
-    if(error){ console.error(error); await appAlert('Could not save to the cloud add-ons list.\n\n' + (error.message||error.details||JSON.stringify(error))); return; }
-    await refetchAddons();
-  } else {
-    data.id = 'local_addon_' + (localAddonIdSeq++);
-    addons.push(data);
-    saveLocalAddons();
-    renderAddons();
-  }
-  ['ad_pn','ad_name','ad_desc','ad_price','ad_series'].forEach(id=>document.getElementById(id).value='');
-}
-async function removeAddon(id){
-  if(!(await appConfirm('Remove this add-on?'))) return;
-  if(usingCloudAddons){
-    const { error } = await sb.from('addons').delete().eq('id', id);
-    if(error){ console.error(error); toast('Could not delete — try again', 'error'); return; }
-    await refetchAddons();
-  } else {
-    addons = addons.filter(a=>a.id!==id);
-    saveLocalAddons();
-    renderAddons();
-  }
-}
-const addonFieldToColumn = { pn:'pn', name:'name', desc:'description', price:'price', compatibleSeries:'compatible_series' };
-async function updateAddonField(id, field, value){
-  if(usingCloudAddons){
-    const col = addonFieldToColumn[field];
-    const { error } = await sb.from('addons').update({[col]: value}).eq('id', id);
-    if(error){ console.error(error); toast('Could not save that change', 'error'); return; }
-    await refetchAddons();
-  } else {
-    const a = addons.find(a=>a.id===id);
-    if(!a) return;
-    a[field] = value;
-    saveLocalAddons();
-    renderAddons();
-  }
-}
-function renderAddons(){
-  const body = document.getElementById('addonsBody');
-  const empty = document.getElementById('addonsEmptyState');
-  const term = (document.getElementById('addonSearch').value||'').trim().toLowerCase();
-  const filtered = term ? addons.filter(a=>
-    (a.pn||'').toLowerCase().includes(term) ||
-    (a.name||'').toLowerCase().includes(term) ||
-    (a.desc||'').toLowerCase().includes(term) ||
-    (a.compatibleSeries||'').toLowerCase().includes(term)
-  ) : addons;
-
-  body.innerHTML = '';
-  if(addons.length===0){ empty.style.display='block'; empty.textContent = 'No add-ons saved yet.'; }
-  else if(filtered.length===0){ empty.style.display='block'; empty.textContent = 'No matches for this search.'; }
-  else { empty.style.display='none'; }
-
-  filtered.forEach(a=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="left-al"><input value="${escapeHtml(a.pn||'')}" style="min-width:110px;" onchange="updateAddonField('${a.id}','pn',this.value)"></td>
-      <td class="left-al"><input value="${escapeHtml(a.name||'')}" style="min-width:140px;" onchange="updateAddonField('${a.id}','name',this.value)"></td>
-      <td class="left-al"><input value="${escapeHtml(a.desc||'')}" style="min-width:200px;" onchange="updateAddonField('${a.id}','desc',this.value)"></td>
-      <td class="left-al"><input value="${escapeHtml(a.compatibleSeries||'')}" placeholder="Not linked — won't auto-suggest" style="min-width:180px;" onchange="updateAddonField('${a.id}','compatibleSeries',this.value)"></td>
-      <td class="num"><input type="number" min="0" step="0.01" value="${a.price!=null?a.price:''}" style="width:95px;" onchange="updateAddonField('${a.id}','price',this.value?Number(this.value):0)"></td>
-      <td><button class="btn-danger" onclick="removeAddon('${a.id}')">Delete</button></td>
-    `;
-    body.appendChild(tr);
-  });
 }
 
 /* ============ catalog: CRUD ============ */
@@ -2229,14 +2139,6 @@ async function addItem(){
     const c = catalog.find(x=>x.id===id);
     if(!c) continue;
     await addAddonAsQuotationItem(c.pn || 'N/A', c.product, c.desc, c.price||0, base.qty, base.tier, 'cpu');
-  }
-
-  // selected compatible/general add-ons -> each becomes its own line item with the real add-on PN
-  const checkedAddonIds = Array.from(compatSelected.addon);
-  for(const id of checkedAddonIds){
-    const a = addons.find(x=>x.id===id);
-    if(!a) continue;
-    await addAddonAsQuotationItem(a.pn || 'N/A', a.name, a.desc, a.price, base.qty, base.tier);
   }
 
   resetAddItemForm();
