@@ -814,6 +814,24 @@ html[data-theme="burgundy"]{
       <div class="hint" style="margin-top:12px;">Saved in this browser only.</div>
     </div>
     <div class="card">
+      <h2><span class="dot"></span>Pricing rules</h2>
+      <div class="hint" style="margin:0 0 14px;">Default Step 1 (Orig. → Vecow) and Step 2 (Vecow → Client) per Type. Applies only to lines you haven't edited by hand — values set directly on a line always win. Saved in this browser. Leave Step 2 empty to use the quantity tiers below.</div>
+      <div id="settingsPricing" class="table-scroll"></div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; align-items:flex-end;">
+        <div><label>Step 2 divisor, qty 1–49</label><input id="tier_t0" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t0', this.value)"></div>
+        <div><label>qty 50–99</label><input id="tier_t50" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t50', this.value)"></div>
+        <div><label>qty 100+</label><input id="tier_t100" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t100', this.value)"></div>
+        <button class="btn-outline" style="padding:8px 14px;" onclick="resetPricingRules()">Reset all pricing rules</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot"></span>Backup</h2>
+      <div class="hint" style="margin:0 0 14px;">Download a copy of your catalog, current quotation lines and saved quotations as a JSON file.</div>
+      <button class="btn-outline" style="padding:8px 14px;" onclick="exportBackup()">Download backup</button>
+    </div>
+
+    <div class="card">
       <h2><span class="dot"></span>Type / category labels</h2>
       <div class="hint" style="margin:0 0 14px;">Rename the Type labels used across the Quotation and Catalog tables (e.g. "Vecow System", "CPU", "RAM"). Saved in this browser — it won't show up on another computer or for a teammate unless they set the same label here too.</div>
       <div id="settingsCatLabels" class="table-scroll"></div>
@@ -1267,7 +1285,23 @@ function updateNewDeviceFieldsVisibility(){
    (so existing quotations and the "Advanced options" add-item flow keep working), but the
    stored step1Op/step1Val/step2Op/step2Val (once set) always win — nothing is auto-calculated
    behind the user's back. */
-function tierDivisor(qty){ if(qty>=100) return 0.8; if(qty>=50) return 0.75; return 0.7; }
+/* User-editable pricing rules (Settings > Pricing rules). Only fills in values an item
+   has NOT set itself — stored step values on an item always win. Saved in this browser. */
+let pricingOverrides = {s1:{}, s2:{}, tiers:{}};
+try{
+  const _po = JSON.parse(localStorage.getItem('vecow_pricing_overrides') || '{}');
+  pricingOverrides = { s1:_po.s1||{}, s2:_po.s2||{}, tiers:_po.tiers||{} };
+}catch(e){}
+function ruleKey(cat){ return cat==='1' ? '1a' : cat==='3' ? '3a' : cat; }
+function ruleOverride(stage, cat){ return pricingOverrides[stage][ruleKey(cat)] || null; }
+function numOr(v, fallback){ return (v!==null && v!==undefined && v!=='' && isFinite(Number(v))) ? Number(v) : fallback; }
+
+function tierDivisor(qty){
+  const t = pricingOverrides.tiers;
+  if(qty>=100) return numOr(t.t100, 0.8);
+  if(qty>=50) return numOr(t.t50, 0.75);
+  return numOr(t.t0, 0.7);
+}
 
 function defaultStep1Op(item){
   return 'mul';
@@ -1290,22 +1324,28 @@ function defaultStep2Val(item){
 }
 function getStep1Op(item){
   if(item.step1Op==='mul' || item.step1Op==='div') return item.step1Op;
+  const o = ruleOverride('s1', item.cat);
+  if(o && (o.op==='mul' || o.op==='div')) return o.op;
   if(item.cat==='3a' || item.cat==='3b' || item.cat==='3') return 'div';
   return defaultStep1Op(item);
 }
 function getStep1Val(item){
-  return (item.step1Val!==null && item.step1Val!==undefined && item.step1Val!=='') ? Number(item.step1Val) : defaultStep1Val(item);
+  if(item.step1Val!==null && item.step1Val!==undefined && item.step1Val!=='') return Number(item.step1Val);
+  const o = ruleOverride('s1', item.cat);
+  return numOr(o && o.val, defaultStep1Val(item));
 }
 function getStep2Op(item){
   if(item.step2Op==='mul' || item.step2Op==='div') return item.step2Op;
+  const o = ruleOverride('s2', item.cat);
+  if(o && (o.op==='mul' || o.op==='div')) return o.op;
   return defaultStep2Op(item);
 }
 function getStep2Val(item){
-  return (item.step2Val!==null && item.step2Val!==undefined && item.step2Val!=='') ? Number(item.step2Val) : defaultStep2Val(item);
+  if(item.step2Val!==null && item.step2Val!==undefined && item.step2Val!=='') return Number(item.step2Val);
+  if(item.tier && item.tier!=='auto' && !['cpu','3a','3b','3','4'].includes(item.cat)) return Number(item.tier);
+  const o = ruleOverride('s2', item.cat);
+  return numOr(o && o.val, defaultStep2Val(item));
 }
-/* step1Parts/step2Parts expose the same two operations in a formula-friendly shape
-   {op:'mul'|'div', val:number} — used both for tooltips and Excel formulas, so the
-   live preview and the exported spreadsheet always agree. */
 function getStep1Parts(item){ return {op:getStep1Op(item), val:getStep1Val(item)}; }
 function getStep2Parts(item){ return {op:getStep2Op(item), val:getStep2Val(item)}; }
 
@@ -1373,7 +1413,77 @@ function saveWelcomeText(v){
   try{ localStorage.setItem('vecow_welcome_text', (v||'').trim()); }catch(e){}
   applyBranding(); toast('Saved', 'success');
 }
+function savePricingOverrides(){
+  try{ localStorage.setItem('vecow_pricing_overrides', JSON.stringify(pricingOverrides)); }catch(e){}
+  render(); renderCatalog(); renderDashboard();
+}
+function savePricingRule(stage, cat, field, value){
+  const bucket = pricingOverrides[stage];
+  const cur = Object.assign({}, bucket[cat] || {});
+  if(field==='op') cur.op = value;
+  else cur.val = (value===''||value===null) ? null : Number(value);
+  if(cur.val!==null && cur.val!==undefined && !(cur.val>0)){ toast('Value must be greater than 0', 'error'); renderSettings(); return; }
+  bucket[cat] = cur;
+  savePricingOverrides(); toast('Pricing rule saved', 'success'); renderSettings();
+}
+function resetPricingRule(stage, cat){
+  delete pricingOverrides[stage][cat];
+  savePricingOverrides(); renderSettings();
+}
+function saveTier(key, value){
+  const n = Number(value);
+  if(value==='' ){ delete pricingOverrides.tiers[key]; }
+  else if(!(n>0)){ toast('Value must be greater than 0', 'error'); renderSettings(); return; }
+  else pricingOverrides.tiers[key] = n;
+  savePricingOverrides(); toast('Saved', 'success');
+}
+async function resetPricingRules(){
+  if(!(await appConfirm('Reset all pricing rules to the built-in defaults?'))) return;
+  pricingOverrides = {s1:{}, s2:{}, tiers:{}};
+  savePricingOverrides(); renderSettings(); toast('Pricing rules reset', 'success');
+}
+function exportBackup(){
+  const data = {
+    exportedAt: new Date().toISOString(),
+    catalog, items, savedQuotations,
+    settings: { catLabelOverrides, pricingOverrides }
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vecow-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+function renderPricingRules(){
+  const host = document.getElementById('settingsPricing');
+  if(!host) return;
+  const cats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
+  const tierBased = c => !['cpu','3a','3b','4'].includes(c);
+  const opSel = (stage, cat, op) => `<select style="width:64px;" onchange="savePricingRule('${stage}','${cat}','op',this.value)">
+      <option value="mul" ${op==='mul'?'selected':''}>×</option><option value="div" ${op==='div'?'selected':''}>÷</option></select>`;
+  const rows = cats.map(cat=>{
+    const probe = {cat, qty:1, tier:'auto'};
+    const o1 = pricingOverrides.s1[cat], o2 = pricingOverrides.s2[cat];
+    const s1op = getStep1Op(probe), s1val = getStep1Val(probe);
+    const s2op = getStep2Op(probe);
+    const s2ph = tierBased(cat) ? 'by qty tier' : String(getStep2Val(probe));
+    const s2val = (o2 && o2.val!=null) ? o2.val : '';
+    return `<tr>
+      <td class="left-al">${escapeHtml(catLabel(cat))}</td>
+      <td><div style="display:flex; gap:6px;">${opSel('s1',cat,s1op)}<input type="number" step="0.01" min="0.01" style="width:90px;" value="${s1val}" onchange="savePricingRule('s1','${cat}','val',this.value)"></div></td>
+      <td><div style="display:flex; gap:6px;">${opSel('s2',cat,s2op)}<input type="number" step="0.01" min="0.01" style="width:110px;" value="${s2val}" placeholder="${s2ph}" onchange="savePricingRule('s2','${cat}','val',this.value)"></div></td>
+      <td>${(o1||o2) ? `<button class="btn-outline" style="padding:6px 12px; font-size:.78rem;" onclick="resetPricingRule('s1','${cat}'); resetPricingRule('s2','${cat}')">Reset</button>` : ''}</td>
+    </tr>`;
+  }).join('');
+  host.innerHTML = `<table><thead><tr><th>Type</th><th>Step 1</th><th>Step 2</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  [['t0',0.7],['t50',0.75],['t100',0.8]].forEach(([k,d])=>{
+    const el = document.getElementById('tier_'+k);
+    if(el){ el.value = pricingOverrides.tiers[k] ?? ''; el.placeholder = String(d); }
+  });
+}
 function renderSettings(){
+  renderPricingRules();
   const wi = document.getElementById('welcomeTextInput');
   if(wi) wi.value = getWelcomeText();
   const host = document.getElementById('settingsCatLabels');
@@ -2680,6 +2790,13 @@ function buildGoogleSheetPayload(){
     const step2Inner = step2.op==='mul' ? `${hRef}*${step2.val}` : step2.op==='div' ? `${hRef}/${step2.val}` : `${hRef}`;
     const step1Formula = `ROUND(${step1Inner},0)`;
     const step2Formula = `ROUND(${step2Inner},0)`;
+    const isOn = pp => !!pp.op && Number(pp.val) && Number(pp.val)!==1;
+    const hasVal = v => v!==null && v!==undefined && v!=='';
+    const manualV = hasVal(item.vecowManual), manualC = hasVal(item.clientManual);
+    const vExpr = manualV ? String(Number(item.vecowManual)) : step1Inner;
+    const cAutoExpr = step2.op==='mul' ? `(${step1Inner})*${step2.val}` : step2.op==='div' ? `(${step1Inner})/${step2.val}` : `(${step1Inner})`;
+    const cExpr = manualC ? String(Number(item.clientManual)) : cAutoExpr;
+    const hasSteps = isOn(step1) || isOn(step2) || manualV || manualC;
     const totalFormula = `ROUND(${iRef}*${fRef},0)`;
     return {
       row:r, no, pn:item.pn||'', type:catLabel(item.cat), product:item.product||'', desc:item.desc||'', qty,
@@ -2689,7 +2806,11 @@ function buildGoogleSheetPayload(){
       // Raw op/val (not just the Sheets formula string) so the "calculation
       // steps" breakdown table can print readable arithmetic, e.g. "1555 x 0.9".
       step1Op: step1.op || null, step1Val: (step1.val!==null && step1.val!==undefined) ? step1.val : null,
-      step2Op: step2.op || null, step2Val: (step2.val!==null && step2.val!==undefined) ? step2.val : null
+      step2Op: step2.op || null, step2Val: (step2.val!==null && step2.val!==undefined) ? step2.val : null,
+      // Unrounded live-formula pieces for the "Profit Summary" table (exact
+      // profit, not profit of already-rounded prices). hasSteps is false for
+      // fixed-price lines (no real Step 1 / Step 2), which have no profit.
+      vExpr, cExpr, hasSteps
     };
   }
   function clientRowObj(row, no, r){
