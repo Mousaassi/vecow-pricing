@@ -464,16 +464,75 @@ html[data-theme="burgundy"]{
 .user-email{font-size:.76rem; color:var(--ink-soft); font-weight:600; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .btn-signout{background:transparent; border:1px solid var(--line); color:var(--ink-soft); padding:6px 12px; font-size:.74rem; font-weight:700; border-radius:16px;}
 .btn-signout:hover{border-color:var(--danger); color:var(--danger);}
+
+/* login showcase */
+.auth-visual{flex-direction:column; align-items:stretch; justify-content:space-between; gap:20px; padding:32px 48px;}
+.auth-visual > *{position:relative; z-index:1;}
+.showcase-top{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+.showcase-top .brand-logo-badge-lg{margin-bottom:0; padding:10px 16px;}
+.showcase-top .brand-logo-badge-lg .brand-logo-img{height:40px;}
+.showcase-top .auth-visual-tag{margin-bottom:0;}
+.showcase{flex:1; min-height:240px; position:relative;}
+.showcase-slide{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
+  opacity:0; transform:translateY(12px) scale(.985); transition:opacity .7s ease, transform .8s cubic-bezier(.16,1,.3,1); pointer-events:none;}
+.showcase-slide.active{opacity:1; transform:none; pointer-events:auto;}
+.slide-stage{width:min(100%,580px); height:min(42vh,340px); border-radius:22px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:20px;
+  background:linear-gradient(145deg, rgba(255,255,255,.11), rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.15); box-shadow:0 30px 60px rgba(0,0,0,.35);}
+.slide-stage img{max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 14px 26px rgba(0,0,0,.45));}
+.slide-ph span{font-family:"Manrope",sans-serif; font-size:5.5rem; font-weight:800; letter-spacing:-.05em; color:rgba(255,255,255,.13);}
+.slide-caption{text-align:center; color:#fff; max-width:520px;}
+.slide-title{font-family:"Manrope",sans-serif; font-size:1.7rem; font-weight:800; letter-spacing:-.01em;}
+.slide-sub{color:rgba(255,255,255,.62); font-size:.95rem; margin-top:6px; line-height:1.5;}
+.showcase-arrow{position:absolute; top:calc(50% - 44px); width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.07); color:#fff; font-size:1.1rem; cursor:pointer; z-index:2; transition:background .2s;}
+.showcase-arrow:hover{background:rgba(255,255,255,.18);}
+.showcase-arrow.prev{left:-6px;} .showcase-arrow.next{right:-6px;}
+.showcase-foot{display:flex; align-items:center; justify-content:space-between; gap:16px; min-height:20px;}
+.showcase-foot .auth-visual-desc{margin:0;}
+.showcase-dots{display:flex; gap:8px; align-items:center;}
+.showcase-dot{width:8px; height:8px; border-radius:99px; border:0; padding:0; background:rgba(255,255,255,.28); cursor:pointer; transition:width .3s, background .3s;}
+.showcase-dot.active{width:26px; background:var(--accent);}
+@media(max-width:860px){
+  .auth-visual{padding:20px 22px; gap:10px;}
+  .showcase, .showcase-dots{display:none !important;}
+}
+@media (prefers-reduced-motion: reduce){ .showcase-slide{transition:none;} }
+
+/* collapsible settings cards */
+.card.collapsible > h2{cursor:pointer; user-select:none; margin-bottom:0; transition:margin .25s ease;}
+.card.collapsible > h2::after{content:""; margin-left:auto; width:8px; height:8px; border-right:2px solid var(--ink-soft); border-bottom:2px solid var(--ink-soft); transform:rotate(45deg) translateY(-2px); transition:transform .3s ease;}
+.card.collapsible > h2:hover{color:var(--accent);}
+.card.collapsible.open > h2{margin-bottom:18px;}
+.card.collapsible.open > h2::after{transform:rotate(-135deg) translateY(-2px);}
+.collapse-body{display:grid; grid-template-rows:0fr; transition:grid-template-rows .35s ease;}
+.card.collapsible.open > .collapse-body{grid-template-rows:1fr;}
+.collapse-inner{overflow:hidden; min-height:0;}
+.add-row{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center;}
+.add-row input{flex:1 1 260px; max-width:420px;}
+.chip-list{display:flex; flex-wrap:wrap; gap:8px;}
+.chip-item{display:inline-flex; align-items:center; gap:8px; padding:6px 8px 6px 12px; border:1px solid var(--line); border-radius:99px; font-size:.82rem; background:var(--card);}
+.chip-item button{border:0; background:transparent; color:var(--ink-soft); cursor:pointer; font-size:1rem; line-height:1; padding:0 4px;}
+.chip-item button:hover{color:var(--danger);}
+.slide-row{display:flex; gap:12px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:var(--radius-sm); margin-bottom:10px; flex-wrap:wrap;}
+.slide-thumb{width:84px; height:56px; border-radius:8px; border:1px solid var(--line); background:var(--bg-soft, rgba(0,0,0,.04)); display:flex; align-items:center; justify-content:center; overflow:hidden; flex:none; font-size:.7rem; color:var(--ink-soft);}
+.slide-thumb img{max-width:100%; max-height:100%; object-fit:contain;}
+.slide-fields{display:flex; gap:8px; flex:1 1 320px; flex-wrap:wrap;}
+.slide-fields input{flex:1 1 150px; min-width:0;}
+.slide-actions{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
+.slide-actions .btn-outline{padding:5px 10px; font-size:.74rem;}
 </style>
 </head>
 <body>
 
 <div id="authGate" class="auth-overlay">
   <div class="auth-visual">
-    <div class="auth-visual-inner">
+    <div class="showcase-top">
       <div class="brand-logo-badge brand-logo-badge-lg"><img class="brand-logo-img" alt="Vecow Tech"></div>
       <div class="auth-visual-tag">Pricing &amp; Quotation Tool</div>
+    </div>
+    <div class="showcase" id="showcase" onmouseenter="showcasePaused=true" onmouseleave="showcasePaused=false"></div>
+    <div class="showcase-foot">
       <p class="auth-visual-desc" id="authWelcomeText"></p>
+      <div class="showcase-dots" id="showcaseDots"></div>
     </div>
   </div>
   <div class="auth-card">
@@ -795,46 +854,96 @@ html[data-theme="burgundy"]{
 
   <!-- ===================== SETTINGS TAB ===================== -->
   <div id="tabSettings" class="vt-panel" style="display:none;">
-    <div class="card">
-      <h2><span class="dot"></span>Branding</h2>
-      <div class="form-grid">
-        <div class="f6">
-          <label>Logo</label>
-          <div class="brand-logo-badge" style="border:1px solid var(--line); box-shadow:none; margin-bottom:10px;"><img class="brand-logo-img" alt="Vecow Tech" style="height:40px;"></div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <input id="logoFileInput" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="max-width:260px;" onchange="uploadLogo(this)">
-            <button class="btn-outline" style="padding:6px 12px; font-size:.78rem;" onclick="resetLogo()">Reset logo</button>
+
+    <div class="card collapsible" id="setcard_showcase">
+      <h2 onclick="toggleCard('setcard_showcase')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_showcase')"><span class="dot"></span>Login showcase</h2>
+      <div class="collapse-body"><div class="collapse-inner">
+        <div class="hint" style="margin:0 0 14px;">The slides shown beside the sign-in form. Add a title, a line of text and (optionally) a product photo for each. Photos are resized automatically. Saved in this browser.</div>
+        <div id="settingsSlides"></div>
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn-primary" style="padding:8px 14px;" onclick="addSlide()">+ Add slide</button>
+          <button class="btn-outline" style="padding:8px 14px;" onclick="resetSlides()">Reset to defaults</button>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="card collapsible" id="setcard_branding">
+      <h2 onclick="toggleCard('setcard_branding')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_branding')"><span class="dot"></span>Branding</h2>
+      <div class="collapse-body"><div class="collapse-inner">
+        <div class="form-grid">
+          <div class="f6">
+            <label>Logo</label>
+            <div class="brand-logo-badge" style="border:1px solid var(--line); box-shadow:none; margin-bottom:10px;"><img class="brand-logo-img" alt="Vecow Tech" style="height:40px;"></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input id="logoFileInput" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="max-width:260px;" onchange="uploadLogo(this)">
+              <button class="btn-outline" style="padding:6px 12px; font-size:.78rem;" onclick="resetLogo()">Reset logo</button>
+            </div>
+          </div>
+          <div class="f6">
+            <label>Login screen welcome line (leave empty to hide)</label>
+            <input id="welcomeTextInput" placeholder="e.g. Welcome, Vecow Tech team." onchange="saveWelcomeText(this.value)">
           </div>
         </div>
-        <div class="f6">
-          <label>Login screen welcome line (leave empty to hide)</label>
-          <input id="welcomeTextInput" placeholder="e.g. Welcome, Vecow Tech team." onchange="saveWelcomeText(this.value)">
+        <div class="hint" style="margin-top:12px;">Saved in this browser only.</div>
+      </div></div>
+    </div>
+
+    <div class="card collapsible" id="setcard_pricing">
+      <h2 onclick="toggleCard('setcard_pricing')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_pricing')"><span class="dot"></span>Pricing rules</h2>
+      <div class="collapse-body"><div class="collapse-inner">
+        <div class="hint" style="margin:0 0 14px;">Default Step 1 (Orig. → Vecow) and Step 2 (Vecow → Client) per Type. Applies only to lines you haven't edited by hand — values set directly on a line always win. Saved in this browser. Leave Step 2 empty to use the quantity tiers below.</div>
+        <div id="settingsPricing" class="table-scroll"></div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; align-items:flex-end;">
+          <div><label>Step 2 divisor, qty 1–49</label><input id="tier_t0" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t0', this.value)"></div>
+          <div><label>qty 50–99</label><input id="tier_t50" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t50', this.value)"></div>
+          <div><label>qty 100+</label><input id="tier_t100" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t100', this.value)"></div>
+          <button class="btn-outline" style="padding:8px 14px;" onclick="resetPricingRules()">Reset all pricing rules</button>
         </div>
-      </div>
-      <div class="hint" style="margin-top:12px;">Saved in this browser only.</div>
-    </div>
-    <div class="card">
-      <h2><span class="dot"></span>Pricing rules</h2>
-      <div class="hint" style="margin:0 0 14px;">Default Step 1 (Orig. → Vecow) and Step 2 (Vecow → Client) per Type. Applies only to lines you haven't edited by hand — values set directly on a line always win. Saved in this browser. Leave Step 2 empty to use the quantity tiers below.</div>
-      <div id="settingsPricing" class="table-scroll"></div>
-      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; align-items:flex-end;">
-        <div><label>Step 2 divisor, qty 1–49</label><input id="tier_t0" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t0', this.value)"></div>
-        <div><label>qty 50–99</label><input id="tier_t50" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t50', this.value)"></div>
-        <div><label>qty 100+</label><input id="tier_t100" type="number" step="0.01" min="0.01" style="width:140px;" onchange="saveTier('t100', this.value)"></div>
-        <button class="btn-outline" style="padding:8px 14px;" onclick="resetPricingRules()">Reset all pricing rules</button>
-      </div>
+      </div></div>
     </div>
 
-    <div class="card">
-      <h2><span class="dot"></span>Backup</h2>
-      <div class="hint" style="margin:0 0 14px;">Download a copy of your catalog, current quotation lines and saved quotations as a JSON file.</div>
-      <button class="btn-outline" style="padding:8px 14px;" onclick="exportBackup()">Download backup</button>
+    <div class="card collapsible" id="setcard_types">
+      <h2 onclick="toggleCard('setcard_types')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_types')"><span class="dot"></span>Product types</h2>
+      <div class="collapse-body"><div class="collapse-inner">
+        <div class="hint" style="margin:0 0 14px;">Rename the built-in Types, or add your own — new Types appear in every Type list (Quotation, Catalog) and in Pricing rules. Saved in this browser — it won't show up on another computer or for a teammate unless they set the same thing here too.</div>
+        <div id="settingsCatLabels" class="table-scroll"></div>
+        <div class="add-row">
+          <input id="newCatName" placeholder="New type name, e.g. Cables" onkeydown="if(event.key==='Enter')addCustomCat()">
+          <button class="btn-primary" style="padding:8px 14px;" onclick="addCustomCat()">+ Add type</button>
+        </div>
+      </div></div>
     </div>
 
-    <div class="card">
-      <h2><span class="dot"></span>Type / category labels</h2>
-      <div class="hint" style="margin:0 0 14px;">Rename the Type labels used across the Quotation and Catalog tables (e.g. "Vecow System", "CPU", "RAM"). Saved in this browser — it won't show up on another computer or for a teammate unless they set the same label here too.</div>
-      <div id="settingsCatLabels" class="table-scroll"></div>
+    <div class="card collapsible" id="setcard_modtypes">
+      <h2 onclick="toggleCard('setcard_modtypes')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_modtypes')"><span class="dot"></span>Module types</h2>
+      <div class="collapse-body"><div class="collapse-inner">
+        <div class="hint" style="margin:0 0 14px;">Extra choices for the "Module type" list (built-in: 4G, 5G, 5G RedCap, WiFi).</div>
+        <div id="settingsModTypes"></div>
+        <div class="add-row">
+          <input id="newList_mod" placeholder="e.g. Bluetooth Module" onkeydown="if(event.key==='Enter')addListItem('mod')">
+          <button class="btn-primary" style="padding:8px 14px;" onclick="addListItem('mod')">+ Add</button>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="card collapsible" id="setcard_brands">
+      <h2 onclick="toggleCard('setcard_brands')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_brands')"><span class="dot"></span>RAM / Storage manufacturers</h2>
+      <div class="collapse-body"><div class="collapse-inner">
+        <div class="hint" style="margin:0 0 14px;">Extra choices for the "Manufacturer / sub-type" list (InnoDisk, Kingston, Transcend, TeamGroup and GoldKey are built in).</div>
+        <div id="settingsBrands"></div>
+        <div class="add-row">
+          <input id="newList_brand" placeholder="e.g. Samsung SSD" onkeydown="if(event.key==='Enter')addListItem('brand')">
+          <button class="btn-primary" style="padding:8px 14px;" onclick="addListItem('brand')">+ Add</button>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="card collapsible" id="setcard_backup">
+      <h2 onclick="toggleCard('setcard_backup')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_backup')"><span class="dot"></span>Backup</h2>
+      <div class="collapse-body"><div class="collapse-inner">
+        <div class="hint" style="margin:0 0 14px;">Download a copy of your catalog, current quotation lines, saved quotations and these settings as a JSON file.</div>
+        <button class="btn-outline" style="padding:8px 14px;" onclick="exportBackup()">Download backup</button>
+      </div></div>
     </div>
   </div>
 
@@ -881,6 +990,55 @@ function applyBranding(){
   if(w){ const t = getWelcomeText(); w.textContent = t; w.style.display = t ? '' : 'none'; }
 }
 applyBranding();
+
+/* ============ login showcase ============ */
+const DEFAULT_SLIDES = [
+  {title:'Edge AI Computing', subtitle:'Edge computing for the AI era', image:''},
+  {title:'Machine Vision', subtitle:'Vision and inspection platforms', image:''},
+  {title:'Industrial Automation', subtitle:'Controllers and automation PCs', image:''},
+  {title:'Rugged Computing', subtitle:'Built for harsh environments', image:''}
+];
+function loadJSON(key, fallback){ try{ const v = JSON.parse(localStorage.getItem(key)); return (v===null||v===undefined) ? fallback : v; }catch(e){ return fallback; } }
+function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
+let showcaseSlides = loadJSON('vecow_showcase_slides', null);
+if(!Array.isArray(showcaseSlides)) showcaseSlides = DEFAULT_SLIDES.map(x=>Object.assign({}, x));
+let showcaseIdx = 0, showcaseTimer = null, showcasePaused = false;
+function saveSlides(){
+  if(!saveJSON('vecow_showcase_slides', showcaseSlides)){ toast('Could not save — the images may be too large for browser storage', 'error'); return false; }
+  return true;
+}
+function renderShowcase(){
+  const host = document.getElementById('showcase');
+  const dots = document.getElementById('showcaseDots');
+  if(!host) return;
+  clearInterval(showcaseTimer);
+  if(!showcaseSlides.length){ host.innerHTML=''; host.style.display='none'; dots.innerHTML=''; return; }
+  host.style.display='';
+  if(showcaseIdx >= showcaseSlides.length) showcaseIdx = 0;
+  const esc = v => String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  host.innerHTML = showcaseSlides.map((sl,i)=>`<div class="showcase-slide ${i===showcaseIdx?'active':''}">
+      <div class="slide-stage">${sl.image ? `<img src="${esc(sl.image)}" alt="">` : `<div class="slide-ph"><span>${String(i+1).padStart(2,'0')}</span></div>`}</div>
+      <div class="slide-caption"><div class="slide-title">${esc(sl.title)}</div><div class="slide-sub">${esc(sl.subtitle)}</div></div>
+    </div>`).join('') +
+    (showcaseSlides.length>1 ? `<button class="showcase-arrow prev" aria-label="Previous" onclick="showcaseStep(-1)">&#8249;</button><button class="showcase-arrow next" aria-label="Next" onclick="showcaseStep(1)">&#8250;</button>` : '');
+  dots.innerHTML = showcaseSlides.length>1 ? showcaseSlides.map((_,i)=>`<button class="showcase-dot ${i===showcaseIdx?'active':''}" aria-label="Slide ${i+1}" onclick="showSlide(${i})"></button>`).join('') : '';
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(showcaseSlides.length>1 && !reduce){
+    showcaseTimer = setInterval(()=>{
+      const gate = document.getElementById('authGate');
+      if(!gate || gate.style.display==='none'){ clearInterval(showcaseTimer); return; }
+      if(!showcasePaused) showcaseStep(1);
+    }, 5500);
+  }
+}
+function showSlide(i){
+  const n = showcaseSlides.length; if(!n) return;
+  showcaseIdx = (i % n + n) % n;
+  document.querySelectorAll('#showcase .showcase-slide').forEach((el,k)=>el.classList.toggle('active', k===showcaseIdx));
+  document.querySelectorAll('#showcaseDots .showcase-dot').forEach((el,k)=>el.classList.toggle('active', k===showcaseIdx));
+}
+function showcaseStep(d){ showSlide(showcaseIdx + d); }
+renderShowcase();
 
 /* ============ state ============ */
 let items = [];
@@ -1012,7 +1170,7 @@ function setMainTab(tab){
     });
     document.getElementById('statRow').style.display = tab==='quotation' ? '' : 'none';
     if(tab==='dashboard') renderDashboard();
-    if(tab==='settings') renderSettings();
+    if(tab==='settings'){ restoreCardStates(); renderSettings(); }
   };
   // Use the real View Transitions API where the browser supports it, so the
   // old panel cross-fades/slides into the new one instead of a hard swap.
@@ -1375,8 +1533,182 @@ const DEFAULT_CAT_LABELS = {
 };
 let catLabelOverrides = {};
 try{ catLabelOverrides = JSON.parse(localStorage.getItem('vecow_cat_label_overrides') || '{}'); }catch(e){ catLabelOverrides = {}; }
+let customCats = loadJSON('vecow_custom_cats', []);          // [{code,label}]
+let customModTypes = loadJSON('vecow_custom_modtypes', []);  // [string]
+let customBrands = loadJSON('vecow_custom_brands', []);      // [string]
+if(!Array.isArray(customCats)) customCats = [];
+if(!Array.isArray(customModTypes)) customModTypes = [];
+if(!Array.isArray(customBrands)) customBrands = [];
+const BUILTIN_CAT_CODES = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
+function allCatCodes(){ return BUILTIN_CAT_CODES.concat(customCats.map(c=>c.code)); }
 function catLabel(cat){
-  return catLabelOverrides[cat] || DEFAULT_CAT_LABELS[cat] || cat;
+  if(catLabelOverrides[cat]) return catLabelOverrides[cat];
+  if(DEFAULT_CAT_LABELS[cat]) return DEFAULT_CAT_LABELS[cat];
+  const cc = customCats.find(c=>c.code===cat);
+  return cc ? cc.label : cat;
+}
+function customCatOptionsHtml(selected){
+  return customCats.map(c=>`<option value="${escapeHtml(c.code)}" ${selected===c.code?'selected':''}>${escapeHtml(c.label)}</option>`).join('');
+}
+// Re-fills the user-added choices in the static Type / Module type / Manufacturer lists.
+function refreshCustomOptions(){
+  ['in_cat','cat_cat'].forEach(id=>{
+    const sel = document.getElementById(id); if(!sel) return;
+    const cur = sel.value;
+    sel.querySelectorAll('option[data-custom]').forEach(o=>o.remove());
+    customCats.forEach(c=>{ const o=document.createElement('option'); o.value=c.code; o.textContent=c.label; o.setAttribute('data-custom','1'); sel.appendChild(o); });
+    if([...sel.options].some(o=>o.value===cur)) sel.value = cur;
+  });
+  ['in_modType','cat_modType'].forEach(id=>{
+    const sel = document.getElementById(id); if(!sel) return;
+    const cur = sel.value;
+    sel.querySelectorAll('option[data-custom]').forEach(o=>o.remove());
+    customModTypes.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; o.setAttribute('data-custom','1'); sel.appendChild(o); });
+    if([...sel.options].some(o=>o.value===cur)) sel.value = cur;
+  });
+  const br = document.getElementById('cat_brand');
+  if(br){
+    const cur = br.value;
+    br.querySelectorAll('optgroup[data-custom]').forEach(o=>o.remove());
+    if(customBrands.length){
+      const g = document.createElement('optgroup'); g.label='Custom'; g.setAttribute('data-custom','1');
+      customBrands.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; g.appendChild(o); });
+      const other = br.querySelector('option[value="__other__"]');
+      br.insertBefore(g, other);
+    }
+    if([...br.options].some(o=>o.value===cur)) br.value = cur;
+  }
+}
+function afterTypesChanged(){ refreshCustomOptions(); render(); renderCatalog(); renderSettings(); }
+refreshCustomOptions();
+function addCustomCat(){
+  const inp = document.getElementById('newCatName');
+  const name = (inp.value||'').trim();
+  if(!name) return;
+  if(allCatCodes().some(c=>catLabel(c).toLowerCase()===name.toLowerCase())){ toast('That type already exists', 'error'); return; }
+  customCats.push({code:'c_'+Date.now().toString(36), label:name});
+  if(!saveJSON('vecow_custom_cats', customCats)){ customCats.pop(); toast('Could not save in this browser', 'error'); return; }
+  inp.value='';
+  afterTypesChanged(); toast('Type added', 'success');
+}
+function saveCustomCatLabel(code, value){
+  const v = (value||'').trim();
+  const cc = customCats.find(c=>c.code===code);
+  if(!cc || !v){ renderSettings(); return; }
+  cc.label = v;
+  saveJSON('vecow_custom_cats', customCats);
+  afterTypesChanged(); toast('Label updated', 'success');
+}
+async function deleteCustomCat(code){
+  const used = catalog.some(c=>c.cat===code) || items.some(i=>i.cat===code);
+  if(used){ toast('This type is used by catalog or quotation lines — change those first', 'error'); return; }
+  if(!(await appConfirm('Remove this type?'))) return;
+  customCats = customCats.filter(c=>c.code!==code);
+  saveJSON('vecow_custom_cats', customCats);
+  delete pricingOverrides.s1[code]; delete pricingOverrides.s2[code];
+  try{ localStorage.setItem('vecow_pricing_overrides', JSON.stringify(pricingOverrides)); }catch(e){}
+  afterTypesChanged();
+}
+function listFor(kind){ return kind==='mod' ? customModTypes : customBrands; }
+function addListItem(kind){
+  const inp = document.getElementById('newList_'+kind);
+  const v = (inp.value||'').trim();
+  if(!v) return;
+  const list = listFor(kind);
+  if(list.some(x=>x.toLowerCase()===v.toLowerCase())){ toast('Already in the list', 'error'); return; }
+  list.push(v);
+  saveJSON(kind==='mod' ? 'vecow_custom_modtypes' : 'vecow_custom_brands', list);
+  inp.value='';
+  refreshCustomOptions(); renderSettings(); toast('Added', 'success');
+}
+function deleteListItem(kind, idx){
+  const list = listFor(kind);
+  list.splice(idx, 1);
+  saveJSON(kind==='mod' ? 'vecow_custom_modtypes' : 'vecow_custom_brands', list);
+  refreshCustomOptions(); renderSettings();
+}
+function renderListEditors(){
+  [['mod','settingsModTypes'],['brand','settingsBrands']].forEach(([kind,id])=>{
+    const host = document.getElementById(id); if(!host) return;
+    const list = listFor(kind);
+    host.innerHTML = list.length
+      ? `<div class="chip-list">${list.map((t,i)=>`<span class="chip-item">${escapeHtml(t)}<button title="Remove" onclick="deleteListItem('${kind}',${i})">&times;</button></span>`).join('')}</div>`
+      : `<div class="hint" style="margin:0;">Nothing added yet.</div>`;
+  });
+}
+function toggleCard(id){
+  const card = document.getElementById(id); if(!card) return;
+  card.classList.toggle('open');
+  const open = loadJSON('vecow_settings_open', {});
+  open[id] = card.classList.contains('open');
+  saveJSON('vecow_settings_open', open);
+}
+function restoreCardStates(){
+  const open = loadJSON('vecow_settings_open', {});
+  document.querySelectorAll('.card.collapsible').forEach(c=>c.classList.toggle('open', !!open[c.id]));
+}
+/* ----- login showcase editor ----- */
+function fileToImageDataUri(file, maxDim, cb){
+  const r = new FileReader();
+  r.onload = ()=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const sc = Math.min(1, maxDim/Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width*sc)); c.height = Math.max(1, Math.round(img.height*sc));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let out = c.toDataURL('image/webp', 0.85);
+      if(!out.startsWith('data:image/webp')) out = c.toDataURL('image/png');
+      cb(out);
+    };
+    img.onerror = ()=>cb(null);
+    img.src = r.result;
+  };
+  r.onerror = ()=>cb(null);
+  r.readAsDataURL(file);
+}
+function updateSlide(i, field, value){ if(!showcaseSlides[i]) return; showcaseSlides[i][field] = value; if(saveSlides()) renderShowcase(); }
+function addSlide(){ showcaseSlides.push({title:'New slide', subtitle:'', image:''}); if(saveSlides()){ showcaseIdx = showcaseSlides.length-1; renderShowcase(); renderSlideEditor(); } else showcaseSlides.pop(); }
+function deleteSlide(i){ showcaseSlides.splice(i,1); saveSlides(); renderShowcase(); renderSlideEditor(); }
+function moveSlide(i, d){
+  const j = i+d; if(j<0 || j>=showcaseSlides.length) return;
+  const t = showcaseSlides[i]; showcaseSlides[i] = showcaseSlides[j]; showcaseSlides[j] = t;
+  saveSlides(); renderShowcase(); renderSlideEditor();
+}
+function uploadSlideImage(i, input){
+  const f = input.files && input.files[0]; if(!f) return;
+  fileToImageDataUri(f, 1000, out=>{
+    if(!out){ toast('Could not read that image', 'error'); return; }
+    const prev = showcaseSlides[i].image;
+    showcaseSlides[i].image = out;
+    if(saveSlides()){ renderShowcase(); renderSlideEditor(); toast('Photo added', 'success'); }
+    else { showcaseSlides[i].image = prev; }
+  });
+}
+function removeSlideImage(i){ showcaseSlides[i].image=''; saveSlides(); renderShowcase(); renderSlideEditor(); }
+async function resetSlides(){
+  if(!(await appConfirm('Reset the login showcase to the default slides? Your slides and photos will be removed.'))) return;
+  showcaseSlides = DEFAULT_SLIDES.map(x=>Object.assign({}, x));
+  try{ localStorage.removeItem('vecow_showcase_slides'); }catch(e){}
+  showcaseIdx = 0; renderShowcase(); renderSlideEditor();
+}
+function renderSlideEditor(){
+  const host = document.getElementById('settingsSlides'); if(!host) return;
+  if(!showcaseSlides.length){ host.innerHTML = '<div class="hint" style="margin:0;">No slides — the login screen will show just the logo.</div>'; return; }
+  host.innerHTML = showcaseSlides.map((sl,i)=>`<div class="slide-row">
+    <div class="slide-thumb">${sl.image ? `<img src="${escapeHtml(sl.image)}" alt="">` : 'No photo'}</div>
+    <div class="slide-fields">
+      <input value="${escapeHtml(sl.title)}" placeholder="Title" onchange="updateSlide(${i},'title',this.value)">
+      <input value="${escapeHtml(sl.subtitle)}" placeholder="One line of text" onchange="updateSlide(${i},'subtitle',this.value)">
+    </div>
+    <div class="slide-actions">
+      <label class="btn-outline" style="cursor:pointer; margin:0; border-radius:8px; padding:5px 10px; font-size:.74rem; display:inline-block;">Photo<input type="file" accept="image/*" style="display:none;" onchange="uploadSlideImage(${i},this)"></label>
+      ${sl.image ? `<button class="btn-outline" onclick="removeSlideImage(${i})">Remove photo</button>` : ''}
+      <button class="btn-outline" title="Move up" onclick="moveSlide(${i},-1)" ${i===0?'disabled':''}>&uarr;</button>
+      <button class="btn-outline" title="Move down" onclick="moveSlide(${i},1)" ${i===showcaseSlides.length-1?'disabled':''}>&darr;</button>
+      <button class="btn-danger" onclick="deleteSlide(${i})">Delete</button>
+    </div>
+  </div>`).join('');
 }
 function saveCatLabelOverride(cat, value){
   const trimmed = (value||'').trim();
@@ -1458,7 +1790,7 @@ function exportBackup(){
 function renderPricingRules(){
   const host = document.getElementById('settingsPricing');
   if(!host) return;
-  const cats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
+  const cats = allCatCodes();
   const tierBased = c => !['cpu','3a','3b','4'].includes(c);
   const opSel = (stage, cat, op) => `<select style="width:64px;" onchange="savePricingRule('${stage}','${cat}','op',this.value)">
       <option value="mul" ${op==='mul'?'selected':''}>×</option><option value="div" ${op==='div'?'selected':''}>÷</option></select>`;
@@ -1484,11 +1816,13 @@ function renderPricingRules(){
 }
 function renderSettings(){
   renderPricingRules();
+  renderListEditors();
+  renderSlideEditor();
   const wi = document.getElementById('welcomeTextInput');
   if(wi) wi.value = getWelcomeText();
   const host = document.getElementById('settingsCatLabels');
   if(!host) return;
-  const rows = Object.keys(DEFAULT_CAT_LABELS).map(cat=>{
+  const builtinRows = Object.keys(DEFAULT_CAT_LABELS).map(cat=>{
     const current = catLabel(cat);
     const isOverridden = !!catLabelOverrides[cat];
     return `<tr>
@@ -1500,9 +1834,15 @@ function renderSettings(){
       <td>${isOverridden ? `<button class="btn-outline" style="padding:6px 12px; font-size:.78rem;" onclick="resetCatLabel('${cat}')">Reset</button>` : ''}</td>
     </tr>`;
   }).join('');
+  const customRows = customCats.map(c=>`<tr>
+      <td class="left-al" style="font-family:'JetBrains Mono',monospace; font-size:.78rem; color:var(--ink-soft);">custom</td>
+      <td class="left-al" style="color:var(--ink-soft);">—</td>
+      <td class="left-al"><input value="${escapeHtml(c.label)}" style="min-width:200px;" onchange="saveCustomCatLabel('${c.code}', this.value)"></td>
+      <td><button class="btn-danger" onclick="deleteCustomCat('${c.code}')">Delete</button></td>
+    </tr>`).join('');
   host.innerHTML = `<table>
     <thead><tr><th>Code</th><th>Default</th><th>Label shown</th><th></th></tr></thead>
-    <tbody>${rows}</tbody>
+    <tbody>${builtinRows}${customRows}</tbody>
   </table>`;
 }
 function catClass(cat){
@@ -1562,7 +1902,7 @@ function updatePnState(){
   const deviceId = match ? match.id : null;
   if(deviceId !== lastCompatDeviceId){ resetCompatSelections(); lastCompatDeviceId = deviceId; }
   if(match){
-    const validCats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
+    const validCats = allCatCodes();
     const matchCat = validCats.includes(match.cat) ? match.cat : '2';
     document.getElementById('in_cat').value = matchCat;
     document.getElementById('in_product').value = match.product || '';
@@ -1903,7 +2243,7 @@ function renderCatalog(){
   // instead of every category mixed together in one long table.
   const catChipsHost = document.getElementById('catalogCategoryChips');
   if(catChipsHost){
-    const presentCats = catalogCategoryOrder.filter(cat=>catalog.some(c=>c.cat===cat));
+    const presentCats = catalogCategoryOrder.concat(customCats.map(c=>c.code)).filter(cat=>catalog.some(c=>c.cat===cat));
     if(presentCats.length===0){
       catChipsHost.innerHTML = '';
     } else {
@@ -1966,6 +2306,7 @@ function renderCatalog(){
           <option value="3a" ${c.cat==='3a'?'selected':''}>RAM</option>
           <option value="3b" ${c.cat==='3b'?'selected':''}>Storage</option>
           <option value="4" ${c.cat==='4'?'selected':''}>Outsourcing</option>
+          ${customCatOptionsHtml(c.cat)}
         </select>
       </td>
       <td class="left-al">${isRamStorage ? `<input value="${escapeHtml(c.brand||'')}" placeholder="e.g. InnoDisk DDR4" style="min-width:140px;" onchange="updateCatalogField('${c.id}','brand',this.value)">` : '<span style="color:var(--ink-soft);">—</span>'}</td>
@@ -2229,7 +2570,7 @@ function resetAddItemForm(){
 }
 
 async function addItem(){
-  const validCats = ['1a','1b','cpu','mod','2','gc','acc','3a','3b','4'];
+  const validCats = allCatCodes();
   let cat = document.getElementById('in_cat').value;
   if(!validCats.includes(cat)) cat = '2';
   const price = document.getElementById('in_price').value;
@@ -2423,6 +2764,7 @@ function render(){
           <option value="3a" ${item.cat==='3a'?'selected':''}>RAM</option>
           <option value="3b" ${item.cat==='3b'?'selected':''}>Storage</option>
           <option value="4" ${item.cat==='4'?'selected':''}>Outsourcing</option>
+          ${customCatOptionsHtml(item.cat)}
         </select>
       </td>
       <td class="left-al trunc" title="${escapeHtml(item.product)}">${escapeHtml(item.product)}</td>
