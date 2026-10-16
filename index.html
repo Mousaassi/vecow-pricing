@@ -3115,7 +3115,10 @@ function buildGoogleSheetPayload(){
   const qDate = document.getElementById('qDate').value || '';
   const dateLabel = qDate ? qDate.replace(/-/g,'') : '';
   const clientName = document.getElementById('qClient').value || '';
-  const headRow = clientName ? 4 : 3;
+  // The Sheets layout starts with a branded title bar + KPI cards (TOP rows)
+  // above the table band, so every row number below is shifted down by TOP.
+  const TOP = 5;
+  const headRow = (clientName ? 4 : 3) + TOP;
 
   function vecowRowObj(item, no, r){
     const eff = getEffective(item);
@@ -3128,31 +3131,34 @@ function buildGoogleSheetPayload(){
     // e.g. 1234.2857 -> 1234, 1234.5 or higher -> 1235 — same as Google
     // Sheets' own ROUND(x, 0), applied directly in the live formula so the
     // cell itself always shows a whole number, not just a rounded display.
-    const step1Inner = step1.op==='mul' ? `${gRef}*${step1.val}` : step1.op==='div' ? `${gRef}/${step1.val}` : `${gRef}`;
-    const step2Inner = step2.op==='mul' ? `${hRef}*${step2.val}` : step2.op==='div' ? `${hRef}/${step2.val}` : `${hRef}`;
-    const step1Formula = `ROUND(${step1Inner},0)`;
-    const step2Formula = `ROUND(${step2Inner},0)`;
-    const isOn = pp => !!pp.op && Number(pp.val) && Number(pp.val)!==1;
+    const validStep = pp => (pp.op==='mul' || pp.op==='div') && Number(pp.val);
+    const step1Inner = validStep(step1) ? (step1.op==='mul' ? `${gRef}*${step1.val}` : `${gRef}/${step1.val}`) : `${gRef}`;
     const hasVal = v => v!==null && v!==undefined && v!=='';
     const manualV = hasVal(item.vecowManual), manualC = hasVal(item.clientManual);
-    const vExpr = manualV ? String(Number(item.vecowManual)) : step1Inner;
-    const cAutoExpr = step2.op==='mul' ? `(${step1Inner})*${step2.val}` : step2.op==='div' ? `(${step1Inner})/${step2.val}` : `(${step1Inner})`;
-    const cExpr = manualC ? String(Number(item.clientManual)) : cAutoExpr;
-    const hasSteps = isOn(step1) || isOn(step2) || manualV || manualC;
+    // Client price is computed from the UNROUNDED Step 1 result (exactly like the
+    // app and the Client table do), so the sheet never disagrees by 1 because
+    // Step 1 was rounded before Step 2 was applied. Manual prices are written as
+    // plain numbers.
+    const clientInner = validStep(step2) ? (step2.op==='mul' ? `(${step1Inner})*${step2.val}` : `(${step1Inner})/${step2.val}`) : `(${step1Inner})`;
+    const step1Formula = manualV ? String(Math.round(Number(item.vecowManual))) : `ROUND(${step1Inner},0)`;
+    const step2Formula = manualC ? String(Math.round(Number(item.clientManual))) : `ROUND(${clientInner},0)`;
     const totalFormula = `ROUND(${iRef}*${fRef},0)`;
+    const auto = computeAuto(item);
+    const clientUnit = Math.round(eff.client);
     return {
       row:r, no, pn:item.pn||'', type:catLabel(item.cat), product:item.product||'', desc:item.desc||'', qty,
       orig, step1Formula, step1Value:Math.round(eff.vecow),
       step2Formula, step2Value:Math.round(eff.client),
-      totalFormula, totalValue:Math.round(eff.client*qty),
+      totalFormula, totalValue:clientUnit*qty,
       // Raw op/val (not just the Sheets formula string) so the "calculation
       // steps" breakdown table can print readable arithmetic, e.g. "1555 x 0.9".
       step1Op: step1.op || null, step1Val: (step1.val!==null && step1.val!==undefined) ? step1.val : null,
       step2Op: step2.op || null, step2Val: (step2.val!==null && step2.val!==undefined) ? step2.val : null,
-      // Unrounded live-formula pieces for the "Profit Summary" table (exact
-      // profit, not profit of already-rounded prices). hasSteps is false for
-      // fixed-price lines (no real Step 1 / Step 2), which have no profit.
-      vExpr, cExpr, hasSteps
+      // Exact (unrounded) results of each step + manual-price flags, so the
+      // "Calculation Steps" table prints true arithmetic (1555 x 0.9 = 1399.5,
+      // then 1399.5 / 0.7 = 1999.29 -> 1999) instead of re-using rounded values.
+      step1Exact: auto.vecow, step2Exact: auto.client,
+      manualV, manualC
     };
   }
   function clientRowObj(row, no, r){
@@ -3162,10 +3168,13 @@ function buildGoogleSheetPayload(){
       const item = row.items[0]; const eff = getEffective(item);
       const roundedUnit = Math.round(eff.client);
       return { row:r, no, type:catLabel(item.cat), product:item.product||'', desc:item.desc||'', qty:item.qty,
-        unitPrice:roundedUnit, total:Math.round(roundedUnit*item.qty), note:resolveNoteText(item) };
+        unitPrice:roundedUnit, total:roundedUnit*item.qty, note:resolveNoteText(item) };
     }
     const s = mergedRowSummary(row);
-    return { row:r, no, type:s.types, product:s.products, desc:s.descs, qty:1, unitPrice:null, total:Math.round(s.total), note:s.noteText };
+    // Sum of each line's ROUNDED unit price x qty — the same arithmetic as the
+    // Vecow block's Total column, so both grand totals in the sheet match exactly.
+    const mergedTotal = row.items.reduce((acc,it)=>acc + Math.round(getEffective(it).client)*(Number(it.qty)||1), 0);
+    return { row:r, no, type:s.types, product:s.products, desc:s.descs, qty:1, unitPrice:null, total:mergedTotal, note:s.noteText };
   }
 
   const mainItems = items.filter(i=>!MEM_CATS.includes(i.cat));
@@ -3183,7 +3192,7 @@ function buildGoogleSheetPayload(){
     qNo, dateLabel, clientName,
     titleText: `${qNo} Quotation _ ${dateLabel}`,
     clientLine: clientName ? ('Client: ' + clientName) : '',
-    headRow,
+    headRow, top:TOP,
     vecowHeaders: ['No','PN','Type','Product','Description','Qty','Price (USD)','U/P (USD)','U/P (USD)','Total (USD)'],
     clientHeaders: ['No','Type','Product','Description','Qty','U/P (USD)','Total (USD)','Note'],
     mainVecowRows, mainClientRows
