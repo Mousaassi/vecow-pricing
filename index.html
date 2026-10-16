@@ -185,6 +185,10 @@ button:active{transform:translateY(1px);}
 .btn-outline:hover{border-color:var(--accent); color:var(--accent);}
 .btn-danger{background:transparent; border:1px solid var(--danger); color:var(--danger); padding:6px 12px; font-size:.78rem; font-weight:600;}
 .btn-danger:hover{background:var(--danger); color:#fff;}
+.move-cell{text-align:center; white-space:nowrap;}
+.move-btn{display:block; width:22px; height:17px; margin:1px auto; padding:0; line-height:1; font-size:.6rem; border:1px solid var(--line); background:var(--card); color:var(--ink-soft); border-radius:4px; cursor:pointer;}
+.move-btn:hover:not(:disabled){background:var(--accent); border-color:var(--accent); color:#fff;}
+.move-btn:disabled{opacity:.3; cursor:default;}
 .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
 
 /* quick add item */
@@ -716,13 +720,13 @@ html[data-theme="burgundy"]{
             <col style="width:22px"><col style="width:20px"><col style="width:66px"><col style="width:78px">
             <col style="width:82px"><col style="width:120px"><col style="width:30px"><col style="width:48px">
             <col style="width:62px"><col style="width:48px"><col style="width:62px"><col style="width:48px">
-            <col style="width:42px"><col style="width:96px"><col style="width:44px"><col style="width:40px">
+            <col style="width:42px"><col style="width:96px"><col style="width:44px"><col style="width:40px"><col style="width:30px">
           </colgroup>
           <thead><tr>
             <th><input type="checkbox" id="selectAllChk" onchange="toggleSelectAllItems(this)"></th>
             <th>#</th><th>PN</th><th>Type</th><th>Product</th><th>Description</th><th>Qty</th>
             <th>Orig. $</th><th>Step 1</th><th>Vecow $</th><th>Step 2</th><th>Client $</th><th>Profit%</th>
-            <th>Note</th><th>Merge</th><th></th>
+            <th>Note</th><th>Merge</th><th></th><th title="Move line up / down">↕</th>
           </tr></thead>
           <tbody id="itemsBody"></tbody>
         </table>
@@ -885,6 +889,17 @@ html[data-theme="burgundy"]{
           </div>
         </div>
         <div class="hint" style="margin-top:12px;">Saved in this browser only.</div>
+      </div></div>
+    </div>
+
+    <div class="card collapsible" id="setcard_sheets">
+      <h2 onclick="toggleCard('setcard_sheets')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_sheets')"><span class="dot"></span>Google Sheets layout</h2>
+      <div class="collapse-body"><div class="collapse-inner">
+        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600;">
+          <input type="checkbox" id="sheetHeaderToggle" onchange="saveSheetHeader(this.checked)" style="width:auto;">
+          Add a title bar and summary cards (total price, cost, profit, margin) at the top of the sheet
+        </label>
+        <div class="hint" style="margin-top:10px;">Turn off for a plain sheet that starts directly with the tables. Applies the next time you send a quotation. Saved in this browser only.</div>
       </div></div>
     </div>
 
@@ -1231,10 +1246,10 @@ async function initPersistence(){
     // Fire all initial reads in parallel (one round-trip instead of several
     // sequential ones) — this is what made the first load feel slow.
     const [itemsRes, metaRes, catRes, qRes] = await Promise.all([
-      sb.from('items').select('*').order('created_at', {ascending:true}),
+      fetchAllRows('items', [['created_at',true],['id',true]]),
       sb.from('quotation_meta').select('*').eq('id',1).single(),
-      sb.from('catalog').select('*').order('pn', {ascending:true}),
-      sb.from('quotations').select('*').order('created_at', {ascending:false})
+      fetchAllRows('catalog', [['pn',true],['id',true]]),
+      fetchAllRows('quotations', [['created_at',false],['id',true]])
     ]);
 
     if(itemsRes.error) throw itemsRes.error;
@@ -1255,7 +1270,7 @@ async function initPersistence(){
       savedQuotations = (qRes.data||[]).map(mapRowToQuotation);
       usingCloudQuotations = true;
       sb.channel('quotations-sync')
-        .on('postgres_changes', {event:'*', schema:'public', table:'quotations'}, ()=>{ refetchQuotations(); })
+        .on('postgres_changes', {event:'*', schema:'public', table:'quotations'}, ()=>{ debounced('quotations', refetchQuotations); })
         .subscribe();
     } else {
       console.error('Quotations table not available yet, falling back to local storage for quotation history:', qRes.error);
@@ -1264,10 +1279,10 @@ async function initPersistence(){
     }
 
     sb.channel('items-sync')
-      .on('postgres_changes', {event:'*', schema:'public', table:'items'}, ()=>{ refetchItems(); })
+      .on('postgres_changes', {event:'*', schema:'public', table:'items'}, ()=>{ debounced('items', refetchItems); })
       .subscribe();
     sb.channel('catalog-sync')
-      .on('postgres_changes', {event:'*', schema:'public', table:'catalog'}, ()=>{ refetchCatalog(); })
+      .on('postgres_changes', {event:'*', schema:'public', table:'catalog'}, ()=>{ debounced('catalog', refetchCatalog); })
       .subscribe();
     sb.channel('meta-sync')
       .on('postgres_changes', {event:'*', schema:'public', table:'quotation_meta'}, (payload)=>{
@@ -1316,19 +1331,54 @@ async function initPersistence(){
   }
 }
 
-async function refetchItems(){
-  const { data, error } = await sb.from('items').select('*').order('created_at', {ascending:true});
+/* Supabase returns at most 1000 rows per request, so anything past row 1000 was
+   silently missing (e.g. new catalog PNs that sort late never showed in search).
+   This reads every page, in a stable order. */
+async function fetchAllRows(table, orders){
+  const size = 1000, out = [];
+  for(let from=0; ; from+=size){
+    let q = sb.from(table).select('*');
+    orders.forEach(o=>{ q = q.order(o[0], {ascending:o[1]}); });
+    const { data, error } = await q.range(from, from+size-1);
+    if(error) return { data:null, error };
+    out.push(...(data||[]));
+    if(!data || data.length < size) break;
+  }
+  return { data:out, error:null };
+}
+/* One refresh at a time per table: if more are requested while one is running
+   they collapse into a single follow-up. Before, every write plus every
+   Realtime event started its own full download and the answers could arrive
+   out of order — that is what made the page lag and rows flicker or vanish. */
+function coalesce(fn){
+  let current = null, again = false;
+  return function(){
+    if(current){ again = true; return current; }
+    current = (async()=>{
+      try{ do{ again = false; await fn(); }while(again); }
+      finally{ current = null; }
+    })();
+    return current;
+  };
+}
+const debounceTimers = {};
+function debounced(key, fn, ms){
+  clearTimeout(debounceTimers[key]);
+  debounceTimers[key] = setTimeout(fn, ms || 250);
+}
+const refetchItems = coalesce(async function(){
+  const { data, error } = await fetchAllRows('items', [['created_at',true],['id',true]]);
   if(!error){ items = (data||[]).map(mapRowToItem); render(); }
-}
-async function refetchCatalog(){
-  const { data, error } = await sb.from('catalog').select('*').order('pn', {ascending:true});
+});
+const refetchCatalog = coalesce(async function(){
+  const { data, error } = await fetchAllRows('catalog', [['pn',true],['id',true]]);
   if(!error){ catalog = (data||[]).map(mapRowToCatalog); renderCatalog(); }
-}
-async function refetchQuotations(){
-  const { data, error } = await sb.from('quotations').select('*').order('created_at', {ascending:false});
+});
+const refetchQuotations = coalesce(async function(){
+  const { data, error } = await fetchAllRows('quotations', [['created_at',false],['id',true]]);
   if(!error){ savedQuotations = (data||[]).map(mapRowToQuotation); renderDashboard(); }
   else { console.error(error); }
-}
+});
 function saveLocalQuotations(){ try{ localStorage.setItem('vecow_quotations', JSON.stringify(savedQuotations)); }catch(e){} }
 
 function saveLocalItems(){ try{ localStorage.setItem('vecow_items', JSON.stringify(items)); }catch(e){} }
@@ -1741,6 +1791,11 @@ function resetLogo(){
   document.getElementById('logoFileInput').value='';
   applyBranding(); toast('Logo reset', 'success');
 }
+function sheetHeaderEnabled(){ try{ return localStorage.getItem('vecow_sheet_header') !== '0'; }catch(e){ return true; } }
+function saveSheetHeader(on){
+  try{ localStorage.setItem('vecow_sheet_header', on ? '1' : '0'); }catch(e){}
+  toast('Saved', 'success');
+}
 function saveWelcomeText(v){
   try{ localStorage.setItem('vecow_welcome_text', (v||'').trim()); }catch(e){}
   applyBranding(); toast('Saved', 'success');
@@ -1820,6 +1875,8 @@ function renderSettings(){
   renderSlideEditor();
   const wi = document.getElementById('welcomeTextInput');
   if(wi) wi.value = getWelcomeText();
+  const sh = document.getElementById('sheetHeaderToggle');
+  if(sh) sh.checked = sheetHeaderEnabled();
   const host = document.getElementById('settingsCatLabels');
   if(!host) return;
   const builtinRows = Object.keys(DEFAULT_CAT_LABELS).map(cat=>{
@@ -1976,7 +2033,8 @@ async function maybeSaveNewPnToCatalog(pn, cat, product, desc, price, compatSeri
   if(chk && !chk.checked) return;
   if(usingCloud){
     try{
-      await sb.from('catalog').insert({pn, cat, product, description:desc, price, compatible_series: compatSeries||'', created_at: Date.now()});
+      const { error } = await sb.from('catalog').insert({pn, cat, product, description:desc, price, compatible_series: compatSeries||'', created_at: Date.now()});
+      if(error){ console.error(error); toast('Item added, but it could not be saved to the catalog', 'error'); return; }
       await refetchCatalog();
     }
     catch(e){ console.error(e); }
@@ -2332,13 +2390,13 @@ async function mergeSelectedItems(){
   const checked = Array.from(document.querySelectorAll('.item-select-chk:checked')).map(el=>el.value);
   if(checked.length < 2){ await appAlert('Tick at least two items to merge.'); return; }
   const groupId = 'grp_' + Date.now();
-  for(const id of checked){ await updateField(id, 'mergeGroup', groupId); }
+  await updateFieldMany(checked, 'mergeGroup', groupId);
   document.getElementById('selectAllChk').checked = false;
 }
 async function unmergeSelectedItems(){
   const checked = Array.from(document.querySelectorAll('.item-select-chk:checked')).map(el=>el.value);
   if(checked.length === 0){ await appAlert('Tick the item(s) you want to un-merge.'); return; }
-  for(const id of checked){ await updateField(id, 'mergeGroup', ''); }
+  await updateFieldMany(checked, 'mergeGroup', '');
   document.getElementById('selectAllChk').checked = false;
 }
 
@@ -2629,23 +2687,17 @@ async function addItem(){
 
   pendingCatalogNote = '';
   const newCompat = base.cat==='acc' ? (document.getElementById('in_compat').value||'').trim() : '';
-  await maybeSaveNewPnToCatalog(base.pn, base.cat, base.product, base.desc, base.price, newCompat);
 
-  // selected compatible accessories (from catalog) -> each becomes its own line item
-  const checkedAccessoryIds = Array.from(compatSelected.acc);
-  for(const id of checkedAccessoryIds){
-    const c = catalog.find(x=>x.id===id);
-    if(!c) continue;
-    await addAddonAsQuotationItem(c.pn || 'N/A', c.product, c.desc, c.price||0, base.qty, base.tier, 'acc');
-  }
-
-  // selected compatible CPUs (from catalog) -> each becomes its own line item
-  const checkedCpuIds = Array.from(compatSelected.cpu);
-  for(const id of checkedCpuIds){
-    const c = catalog.find(x=>x.id===id);
-    if(!c) continue;
-    await addAddonAsQuotationItem(c.pn || 'N/A', c.product, c.desc, c.price||0, base.qty, base.tier, 'cpu');
-  }
+  // Compatible accessories / CPUs ticked in the panel become their own lines —
+  // inserted in ONE request, in parallel with saving the PN to the catalog,
+  // instead of one slow round-trip after another.
+  const addons = [];
+  Array.from(compatSelected.acc).forEach(id=>{ const c = catalog.find(x=>x.id===id); if(c) addons.push({c, cat:'acc'}); });
+  Array.from(compatSelected.cpu).forEach(id=>{ const c = catalog.find(x=>x.id===id); if(c) addons.push({c, cat:'cpu'}); });
+  await Promise.all([
+    maybeSaveNewPnToCatalog(base.pn, base.cat, base.product, base.desc, base.price, newCompat),
+    addAddonsAsQuotationItems(addons, base.qty, base.tier)
+  ]);
 
   resetAddItemForm();
   if(usingCloud){
@@ -2658,37 +2710,41 @@ async function addItem(){
   toast(`${product} added to quotation`, 'success');
 }
 
-async function addAddonAsQuotationItem(pn, product, desc, price, qty, tier, cat){
-  const row = {
-    pn: pn, cat: cat||'2', isIntel: false, cpuDiv: null, tier: tier || 'auto',
-    step1Op: null, step1Val: null, step2Op: null, step2Val: null,
-    product: product, desc: desc || '', qty: qty, price: Number(price)||0,
-    vecowManual: null, clientManual: null, note: '', noteCustom: '', noteDate: '', mergeGroup: '',
-    createdAt: Date.now()
-  };
+async function addAddonsAsQuotationItems(list, qty, tier){
+  if(!list.length) return;
+  const t0 = Date.now() + 1;
+  const rows = list.map((a, k)=>({
+    pn: a.c.pn || 'N/A', cat: a.cat, product: a.c.product, desc: a.c.desc || '', price: Number(a.c.price)||0,
+    qty, tier: tier || 'auto', createdAt: t0 + k
+  }));
   if(usingCloud){
-    const dbRow = {
-      pn: row.pn, cat: row.cat, is_intel: false, intel_div: row.cpuDiv, tier: row.tier,
-      step1_op: row.step1Op, step1_val: row.step1Val, step2_op: row.step2Op, step2_val: row.step2Val,
-      product: row.product, description: row.desc, qty: row.qty, price: row.price,
+    const dbRows = rows.map(r=>({
+      pn: r.pn, cat: r.cat, is_intel: false, intel_div: null, tier: r.tier,
+      step1_op: null, step1_val: null, step2_op: null, step2_val: null,
+      product: r.product, description: r.desc, qty: r.qty, price: r.price,
       vecow_manual: null, client_manual: null, note:'', note_custom:'', note_date:'', merge_group:'',
-      created_at: row.createdAt
-    };
-    const { error } = await sb.from('items').insert(dbRow);
-    if(error) console.error(error);
+      created_at: r.createdAt
+    }));
+    const { error } = await sb.from('items').insert(dbRows);
+    if(error){ console.error(error); toast('Could not add the selected accessories', 'error'); }
   } else {
-    row.id = 'local_' + (localIdSeq++);
-    items.push(row);
+    rows.forEach(r=>{
+      items.push({ id:'local_'+(localIdSeq++), pn:r.pn, cat:r.cat, isIntel:false, cpuDiv:null, tier:r.tier,
+        step1Op:null, step1Val:null, step2Op:null, step2Val:null, product:r.product, desc:r.desc, qty:r.qty, price:r.price,
+        vecowManual:null, clientManual:null, note:'', noteCustom:'', noteDate:'', mergeGroup:'', createdAt:r.createdAt });
+    });
     saveLocalItems();
   }
 }
 
 async function removeItem(id){
   if(usingCloud){
+    // Remove from the screen at once; the database catches up behind it.
+    const before = items;
+    items = items.filter(i=>i.id!==id);
+    render();
     const { error } = await sb.from('items').delete().eq('id', id);
-    if(error){ console.error(error); toast('Could not delete — try again', 'error'); return; }
-    // Don't wait for the Realtime round-trip to confirm the delete — refetch
-    // right away so the row disappears immediately instead of needing a page reload.
+    if(error){ console.error(error); items = before; render(); toast('Could not delete — try again', 'error'); return; }
     await refetchItems();
   } else {
     items = items.filter(i=>i.id!==id);
@@ -2697,18 +2753,64 @@ async function removeItem(id){
   }
 }
 async function updateField(id, field, value){
+  const item = items.find(i=>i.id===id);
   if(usingCloud){
     const col = fieldToColumn[field];
+    if(item){ item[field] = value; render(); }          // instant on screen
     const { error } = await sb.from('items').update({[col]: value}).eq('id', id);
-    if(error){ console.error(error); toast('Could not save that change', 'error'); return; }
-    await refetchItems();
+    if(error){ console.error(error); toast('Could not save that change', 'error'); }
+    await refetchItems();                                // sync with the database either way
   } else {
-    const item = items.find(i=>i.id===id);
     if(!item) return;
     item[field] = value;
     saveLocalItems();
     render();
   }
+}
+// Same change on several lines with ONE request (merge / un-merge many lines).
+async function updateFieldMany(ids, field, value){
+  if(!ids.length) return;
+  if(usingCloud){
+    const col = fieldToColumn[field];
+    items.forEach(it=>{ if(ids.includes(it.id)) it[field] = value; });
+    render();
+    const { error } = await sb.from('items').update({[col]: value}).in('id', ids);
+    if(error){ console.error(error); toast('Could not save that change', 'error'); }
+    await refetchItems();
+  } else {
+    items.forEach(it=>{ if(ids.includes(it.id)) it[field] = value; });
+    saveLocalItems();
+    render();
+  }
+}
+
+/* Move a line up or down. The table order is the created_at order, so a move
+   re-hands out the existing created_at values (kept strictly increasing) in the
+   new order — only the lines that actually changed place are written. */
+let reorderBusy = false;
+async function moveItem(id, dir){
+  if(reorderBusy) return;
+  const i = items.findIndex(x=>x.id===id), j = i + dir;
+  if(i < 0 || j < 0 || j >= items.length) return;
+  reorderBusy = true;
+  try{
+    const order = items.slice();
+    [order[i], order[j]] = [order[j], order[i]];
+    if(usingCloud){
+      const slots = items.map(x=>Number(x.createdAt)||0).sort((a,b)=>a-b);
+      for(let k=1; k<slots.length; k++) if(slots[k] <= slots[k-1]) slots[k] = slots[k-1] + 1;
+      const changes = [];
+      order.forEach((it,k)=>{ if(Number(it.createdAt) !== slots[k]) changes.push({id:it.id, ts:slots[k]}); });
+      order.forEach((it,k)=>{ it.createdAt = slots[k]; });
+      items = order; render();                           // instant on screen
+      const results = await Promise.all(changes.map(c=>sb.from('items').update({created_at:c.ts}).eq('id', c.id)));
+      const failed = results.find(r=>r.error);
+      if(failed){ console.error(failed.error); toast('Could not save the new order', 'error'); }
+      await refetchItems();
+    } else {
+      items = order; saveLocalItems(); render();
+    }
+  } finally { reorderBusy = false; }
 }
 async function clearAll(){
   if(!(await appConfirm('Clear all items?'))) return;
@@ -2779,6 +2881,10 @@ function render(){
       <td>${renderNoteCell(item)}</td>
       <td><input class="merge-chip" placeholder="—" value="${escapeHtml(item.mergeGroup||'')}" onchange="updateField('${item.id}','mergeGroup',this.value)"></td>
       <td><button class="btn-danger" style="padding:5px 7px; font-size:.7rem;" onclick="removeItem('${item.id}')">Del</button></td>
+      <td class="move-cell">
+        <button class="move-btn" title="Move up" ${idx===0?'disabled':''} onclick="moveItem('${item.id}',-1)">▲</button>
+        <button class="move-btn" title="Move down" ${idx===items.length-1?'disabled':''} onclick="moveItem('${item.id}',1)">▼</button>
+      </td>
     `;
     body.appendChild(tr);
   });
@@ -3115,9 +3221,9 @@ function buildGoogleSheetPayload(){
   const qDate = document.getElementById('qDate').value || '';
   const dateLabel = qDate ? qDate.replace(/-/g,'') : '';
   const clientName = document.getElementById('qClient').value || '';
-  // The Sheets layout starts with a branded title bar + KPI cards (TOP rows)
-  // above the table band, so every row number below is shifted down by TOP.
-  const TOP = 5;
+  // Optional branded title bar + KPI cards (5 rows) above the tables; every
+  // row number below is shifted down by TOP (0 = plain sheet, tables at the top).
+  const TOP = sheetHeaderEnabled() ? 5 : 0;
   const headRow = (clientName ? 4 : 3) + TOP;
 
   function vecowRowObj(item, no, r){
