@@ -892,17 +892,6 @@ html[data-theme="burgundy"]{
       </div></div>
     </div>
 
-    <div class="card collapsible" id="setcard_sheets">
-      <h2 onclick="toggleCard('setcard_sheets')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_sheets')"><span class="dot"></span>Google Sheets layout</h2>
-      <div class="collapse-body"><div class="collapse-inner">
-        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600;">
-          <input type="checkbox" id="sheetHeaderToggle" onchange="saveSheetHeader(this.checked)" style="width:auto;">
-          Add a title bar and summary cards (total price, cost, profit, margin) at the top of the sheet
-        </label>
-        <div class="hint" style="margin-top:10px;">Turn off for a plain sheet that starts directly with the tables. Applies the next time you send a quotation. Saved in this browser only.</div>
-      </div></div>
-    </div>
-
     <div class="card collapsible" id="setcard_pricing">
       <h2 onclick="toggleCard('setcard_pricing')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')toggleCard('setcard_pricing')"><span class="dot"></span>Pricing rules</h2>
       <div class="collapse-body"><div class="collapse-inner">
@@ -1791,11 +1780,6 @@ function resetLogo(){
   document.getElementById('logoFileInput').value='';
   applyBranding(); toast('Logo reset', 'success');
 }
-function sheetHeaderEnabled(){ try{ return localStorage.getItem('vecow_sheet_header') !== '0'; }catch(e){ return true; } }
-function saveSheetHeader(on){
-  try{ localStorage.setItem('vecow_sheet_header', on ? '1' : '0'); }catch(e){}
-  toast('Saved', 'success');
-}
 function saveWelcomeText(v){
   try{ localStorage.setItem('vecow_welcome_text', (v||'').trim()); }catch(e){}
   applyBranding(); toast('Saved', 'success');
@@ -1875,8 +1859,6 @@ function renderSettings(){
   renderSlideEditor();
   const wi = document.getElementById('welcomeTextInput');
   if(wi) wi.value = getWelcomeText();
-  const sh = document.getElementById('sheetHeaderToggle');
-  if(sh) sh.checked = sheetHeaderEnabled();
   const host = document.getElementById('settingsCatLabels');
   if(!host) return;
   const builtinRows = Object.keys(DEFAULT_CAT_LABELS).map(cat=>{
@@ -3221,9 +3203,7 @@ function buildGoogleSheetPayload(){
   const qDate = document.getElementById('qDate').value || '';
   const dateLabel = qDate ? qDate.replace(/-/g,'') : '';
   const clientName = document.getElementById('qClient').value || '';
-  // Optional branded title bar + KPI cards (5 rows) above the tables; every
-  // row number below is shifted down by TOP (0 = plain sheet, tables at the top).
-  const TOP = sheetHeaderEnabled() ? 5 : 0;
+  const TOP = 0;   // tables start at the very top of the sheet
   const headRow = (clientName ? 4 : 3) + TOP;
 
   function vecowRowObj(item, no, r){
